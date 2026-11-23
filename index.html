@@ -3,34 +3,32 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Makin Cerdas Makin Sukses — Arena Game Edukasi, Kurikulum & TKA (SD • SMP • SMA)</title>
-  <meta name="description" content="Platform game edukasi interaktif Kurikulum Merdeka, K13, Ujian Sekolah & TKA untuk pelajar SD, SMP, dan SMA sederajat dengan animasi sesuai jenjang dan custom musik." />
+  <title>Makin Cerdas Makin Sukses | Game Edukasi SD, SMP & SMA</title>
+  <meta name="description" content="Game edukasi seru berbasis pengetahuan untuk pelajar SD, SMP, dan SMA. Lengkap dengan latihan soal, simulasi TKA, dan musik pilihan." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;600;700;800&family=Outfit:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+  <!-- SD: Fredoka + Quicksand | SMP: Rubik + Poppins | SMA: Chakra Petch + Rajdhani -->
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=Fredoka:wght@600;700&family=Poppins:wght@500;600;700&family=Quicksand:wght@600;700&family=Rajdhani:wght@600;700&family=Rubik:wght@700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles/main.css" />
   <link rel="stylesheet" href="styles/games.css" />
 </head>
 <body>
-  <!-- Grade-Adaptive Animated Background Canvas -->
   <canvas id="bg-canvas" aria-hidden="true"></canvas>
-  <!-- Celebration / Confetti / Particle Overlay Canvas -->
   <canvas id="fx-canvas" aria-hidden="true"></canvas>
 
-  <!-- Top Navigation Bar -->
   <header class="topbar">
     <div class="topbar-left">
       <button id="btn-home-logo" class="brand" title="Kembali ke Beranda">
         <span class="brand-icon" id="brand-icon-slot"></span>
         <span class="brand-text">
           <strong>Makin Cerdas Makin Sukses</strong>
-          <small id="brand-subtitle">Kurikulum Merdeka • K13 • TKA</small>
+          <small id="brand-subtitle">Game Belajar SD, SMP & SMA</small>
         </span>
       </button>
     </div>
 
     <div class="topbar-center">
-      <div class="grade-pill-group" role="radiogroup" aria-label="Pilih Jenjang Pendidikan">
+      <div class="grade-pill-group" role="radiogroup" aria-label="Pilih Jenjang">
         <button class="grade-pill" data-grade="SD" aria-checked="true">
           <span class="grade-icon-slot" data-icon="sd"></span> SD
         </button>
@@ -44,13 +42,13 @@
     </div>
 
     <div class="topbar-right">
-      <button id="btn-music" class="icon-btn music-btn" title="Studio Musik & BGM" aria-label="Studio Musik">
+      <button id="btn-music" class="icon-btn music-btn" title="Musik Latar" aria-label="Studio Musik">
         <span id="music-icon-slot"></span>
         <span id="music-eq" class="eq-bars hidden" aria-hidden="true">
           <i></i><i></i><i></i>
         </span>
       </button>
-      <button id="btn-sound" class="icon-btn" title="Efek Suara: Nyala" aria-label="Toggle efek suara">
+      <button id="btn-sound" class="icon-btn" title="Efek Suara" aria-label="Efek Suara">
         <span id="sound-icon"></span>
       </button>
       <button id="btn-quests" class="icon-btn badge-btn" title="Misi Harian" aria-label="Misi Harian">
@@ -67,15 +65,10 @@
     </div>
   </header>
 
-  <!-- Main Viewport -->
-  <main id="app-root" class="app-root">
-    <!-- Dynamic views injected here -->
-  </main>
+  <main id="app-root" class="app-root"></main>
 
-  <!-- Floating XP / Toast Container -->
   <div id="toast-container" class="toast-container" aria-live="polite"></div>
 
-  <!-- Modal Backdrop -->
   <div id="modal-backdrop" class="modal-backdrop hidden" role="dialog" aria-modal="true">
     <div id="modal-content" class="modal-card"></div>
   </div>

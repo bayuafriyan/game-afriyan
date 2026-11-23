@@ -48,9 +48,9 @@
   --font-body: 'Nunito', system-ui, sans-serif;
 }
 
-/* ====== WORLD 1: SD — Taman Langit Ceria (Sunny, Playful, Kids-Friendly) ====== */
+/* ====== WORLD 1: SD — Taman Langit Ceria (Fredoka + Quicksand) ====== */
 html[data-grade="SD"] {
-  --bg-page: linear-gradient(180deg, #7dd3fc 0%, #e0f2fe 48%, #fef9c3 100%);
+  --bg-page: linear-gradient(180deg, #7dd3fc 0%, #e0f2fe 50%, #fef9c3 100%);
   --bg-pattern: radial-gradient(rgba(255, 255, 255, 0.55) 2px, transparent 2px);
   --topbar-bg: #ffffff;
   --topbar-border: #7dd3fc;
@@ -61,10 +61,11 @@ html[data-grade="SD"] {
   --hero-bg: linear-gradient(135deg, #0284c7 0%, #0ea5e9 55%, #38bdf8 100%);
   --hero-shadow: #075985;
   --font-display: 'Fredoka', system-ui, sans-serif;
-  --font-body: 'Nunito', system-ui, sans-serif;
+  --font-body: 'Quicksand', system-ui, sans-serif;
+  --btn-text-shadow: 0 2px 0 rgba(0, 0, 0, 0.22);
 }
 
-/* ====== WORLD 2: SMP — Akademi Petualang (Crisp Vibrant Cobalt & Mint) ====== */
+/* ====== WORLD 2: SMP — Akademi Petualang (Rubik + Poppins) ====== */
 html[data-grade="SMP"] {
   --bg-page: linear-gradient(180deg, #e0e7ff 0%, #eef2ff 55%, #ecfeff 100%);
   --bg-pattern: radial-gradient(rgba(99, 102, 241, 0.14) 1.5px, transparent 1.5px);
@@ -76,11 +77,12 @@ html[data-grade="SMP"] {
   --primary-dark: #3730a3;
   --hero-bg: linear-gradient(135deg, #4338ca 0%, #6366f1 60%, #06b6d4 100%);
   --hero-shadow: #312e81;
-  --font-display: 'Space Grotesk', system-ui, sans-serif;
-  --font-body: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-display: 'Rubik', system-ui, sans-serif;
+  --font-body: 'Poppins', system-ui, sans-serif;
+  --btn-text-shadow: 0 2px 0 rgba(0, 0, 0, 0.2);
 }
 
-/* ====== WORLD 3: SMA — Arena Juara (Clean Competition / Esports Light) ====== */
+/* ====== WORLD 3: SMA — Arena Juara (Chakra Petch + Rajdhani) ====== */
 html[data-grade="SMA"] {
   --bg-page: linear-gradient(180deg, #f1f5f9 0%, #f8fafc 55%, #fff7ed 100%);
   --bg-pattern: linear-gradient(rgba(15, 23, 42, 0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(15, 23, 42, 0.04) 1px, transparent 1px);
@@ -92,8 +94,9 @@ html[data-grade="SMA"] {
   --primary-dark: #9a3412;
   --hero-bg: linear-gradient(135deg, #0f172a 0%, #1e293b 62%, #c2410c 100%);
   --hero-shadow: #020617;
-  --font-display: 'Outfit', system-ui, sans-serif;
-  --font-body: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-display: 'Chakra Petch', system-ui, sans-serif;
+  --font-body: 'Rajdhani', system-ui, sans-serif;
+  --btn-text-shadow: none;
 }
 
 *, *::before, *::after {
@@ -780,6 +783,7 @@ body::before {
   color: #fff;
   border-color: var(--primary-dark);
   box-shadow: 0 5px 0 var(--primary-dark);
+  text-shadow: var(--btn-text-shadow, none);
 }
 
 .btn-secondary {
@@ -794,6 +798,7 @@ body::before {
   color: #fff;
   border-color: #16a34a;
   box-shadow: 0 5px 0 #15803d;
+  text-shadow: var(--btn-text-shadow, none);
 }
 
 .btn-danger {
@@ -801,6 +806,7 @@ body::before {
   color: #fff;
   border-color: #dc2626;
   box-shadow: 0 5px 0 #b91c1c;
+  text-shadow: var(--btn-text-shadow, none);
 }
 
 .btn-amber {
@@ -808,6 +814,14 @@ body::before {
   color: #422006;
   border-color: #eab308;
   box-shadow: 0 5px 0 #ca8a04;
+}
+
+/* Tabular numbers so scores, timers, XP never jitter */
+.chip-level,
+.xp-bar-labels,
+.mini-stat strong,
+.best-score {
+  font-variant-numeric: tabular-nums;
 }
 
 .btn-sm {

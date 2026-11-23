@@ -25,94 +25,91 @@ const GAMES = [
   {
     id: 'tka',
     featured: true,
-    title: 'Simulasi TKA & Ujian CBT',
-    tag: 'TKA 2025/2026 • US • ANBK • UTBK',
+    title: 'Simulasi TKA & Ujian',
+    tag: 'Ujian CBT',
     iconKey: 'tka',
     accent: '#fbbf24',
     bg: 'linear-gradient(135deg, #f59e0b, #ef4444)',
-    desc: 'Latihan ujian model CBT asli lengkap dengan timer, navigasi nomor, tanda ragu-ragu, nilai skala 100 & pembahasan lengkap.',
+    desc: 'Latihan ujian lengkap dengan timer, nilai skala 100, dan pembahasan.',
     mount: mountTkaExam,
   },
   {
     id: 'quiz',
-    title: 'Cepat Tepat Arena',
-    tag: 'Kuis • Semua Mapel Merdeka & K13',
+    title: 'Cepat Tepat',
+    tag: 'Kuis Mapel',
     iconKey: 'quiz',
     accent: '#22d3ee',
     bg: 'linear-gradient(135deg, #06b6d4, #6366f1)',
-    desc: 'Pilih mata pelajaran favoritmu! Jawab soal ber-timer dengan combo, bantuan 50:50, Bekukan Waktu & pembahasan instan.',
+    desc: 'Pilih mapel favoritmu dan kumpulkan combo poin sebanyak mungkin.',
     mount: mountQuizBlitz,
   },
   {
     id: 'meteor',
     title: 'Meteor Hitung',
-    tag: 'Aksi Arcade • Matematika',
+    tag: 'Aksi 2D',
     iconKey: 'meteor',
     accent: '#f97316',
     bg: 'linear-gradient(135deg, #f97316, #ec4899)',
-    desc: 'Lindungi planetmu! Hitung cepat soal matematika pada meteor yang jatuh dan tembakkan laser sebelum menabrak perisai.',
+    desc: 'Tembak jatuh meteor angka dengan laser sebelum menyentuh planet.',
     mount: mountMeteorMath,
   },
   {
     id: 'memory',
     title: 'Memori Pasangan',
-    tag: 'Daya Ingat • Konsep',
+    tag: 'Kartu 3D',
     iconKey: 'memory',
     accent: '#a855f7',
     bg: 'linear-gradient(135deg, #8b5cf6, #ec4899)',
-    desc: 'Buka kartu animasi 3D dan jodohkan pasangan pengetahuan: rumus kimia, ibu kota, tokoh sejarah, hingga trigonometri.',
+    desc: 'Buka kartu dan temukan pasangan rumus, ibu kota, atau istilah.',
     mount: mountMemoryMatch,
   },
   {
     id: 'scramble',
-    title: 'Susun Kata Cerdas',
-    tag: 'Teka-Teki • Kosakata',
+    title: 'Susun Kata',
+    tag: 'Teka Teki',
     iconKey: 'scramble',
     accent: '#10b981',
     bg: 'linear-gradient(135deg, #10b981, #22d3ee)',
-    desc: 'Rangkai huruf acak menjadi istilah sains, geografi, sejarah, atau ekonomi berdasarkan petunjuk cerdas.',
+    desc: 'Rangkai huruf acak menjadi istilah pelajaran yang tepat.',
     mount: mountWordScramble,
   },
   {
     id: 'truefalse',
-    title: 'Benar atau Mitos?',
-    tag: 'Refleks • Fakta Sains',
+    title: 'Benar atau Mitos',
+    tag: 'Refleks',
     iconKey: 'truefalse',
     accent: '#fbbf24',
     bg: 'linear-gradient(135deg, #f59e0b, #ec4899)',
-    desc: 'Tentukan dalam hitungan detik apakah pernyataan di layar adalah fakta ilmiah atau cuma mitos belaka!',
+    desc: 'Tentukan cepat apakah pernyataan di layar fakta atau mitos.',
     mount: mountTrueFalse,
   },
   {
     id: 'sort',
     title: 'Rantai Ilmu',
-    tag: 'Klasifikasi • Logika',
+    tag: 'Sortir',
     iconKey: 'sort',
     accent: '#38bdf8',
     bg: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
-    desc: 'Sortir kartu pengetahuan ke portal kategori yang tepat: hewan, wujud benda, unsur/senyawa, asam/basa, hingga ekonomi.',
+    desc: 'Kelompokkan kartu pengetahuan ke portal kategori yang sesuai.',
     mount: mountCategorySort,
   },
 ];
 
 const GRADE_INFO = {
   SD: {
-    label: 'Sekolah Dasar (Fase A–C • Kelas 1–6)',
-    themeName: 'Tema Petualangan Langit Ceria',
-    tagline: 'Belajar Matematika, IPAS, B. Indonesia, B. Inggris, Pancasila, Seni & persiapan TKA/ANBK SD sambil bermain!',
-    curricula: ['Kurikulum Merdeka', 'K13 Tematik', 'TKA SD (Mat & B.Indo)', 'ANBK & Ujian Sekolah'],
+    badge: 'Jenjang SD',
+    headline: 'Main Sambil <span class="gradient-word">Belajar Seru!</span>',
+    tagline: 'Asah berhitung, sains, dan pengetahuan umum dengan game ceria.',
   },
   SMP: {
-    label: 'Sekolah Menengah Pertama (Fase D • Kelas 7–9)',
-    themeName: 'Tema Cyber-Lab Explorer',
-    tagline: 'Asah Matematika, IPA, IPS, Informatika, Bahasa, Pancasila & latihan soal TKA SMP dengan nuansa laboratorium modern!',
-    curricula: ['Kurikulum Merdeka', 'K13 SMP', 'TKA SMP (Mat & B.Indo)', 'Informatika & ANBK'],
+    badge: 'Jenjang SMP',
+    headline: 'Asah Otak & <span class="gradient-word">Naik Level!</span>',
+    tagline: 'Taklukkan tantangan mapel SMP, Informatika, dan latihan TKA.',
   },
   SMA: {
-    label: 'SMA / MA / SMK (Fase E–F • Kelas 10–12)',
-    themeName: 'Tema Aurora Observatory',
-    tagline: 'Taklukkan mapel wajib & pilihan (MIPA, IPS, Bahasa, PKWU) serta simulasi TKA 2025/2026 & UTBK-SNBT!',
-    curricula: ['Kurikulum Merdeka', 'K13 MIPA/IPS', 'TKA SMA Wajib & Pilihan', 'UTBK-SNBT & SMK'],
+    badge: 'Jenjang SMA & SMK',
+    headline: 'Siap TKA & <span class="gradient-word">Ujian Juara!</span>',
+    tagline: 'Latihan mapel wajib, pilihan, serta simulasi CBT tanpa bosan.',
   },
 };
 
@@ -198,18 +195,13 @@ function renderHome() {
   root.innerHTML = `
     <section class="hero-banner">
       <div class="hero-left">
-        <div class="hero-badge">✨ ${gInfo.label} • ${gInfo.themeName}</div>
-        <h1 class="hero-title">
-          Belajar Jadi <span class="gradient-word">Petualangan Seru</span> Tanpa Bosan!
-        </h1>
+        <div class="hero-badge">✨ ${gInfo.badge}</div>
+        <h1 class="hero-title">${gInfo.headline}</h1>
         <p class="hero-desc">${gInfo.tagline}</p>
-        <div class="curriculum-tags">
-          ${gInfo.curricula.map((c) => `<span class="curr-pill">✓ ${c}</span>`).join('')}
-        </div>
         <div class="hero-actions">
-          <button id="btn-start-tka" class="btn btn-amber">🎯 Simulasi TKA & Ujian</button>
+          <button id="btn-start-tka" class="btn btn-amber">🎯 Simulasi TKA</button>
           <button id="btn-quick-play" class="btn btn-primary">🎲 Game Acak</button>
-          <button id="btn-open-music" class="btn btn-secondary">${icon('music')} Studio Musik</button>
+          <button id="btn-open-music" class="btn btn-secondary">${icon('music')} Musik</button>
         </div>
       </div>
 
@@ -223,7 +215,7 @@ function renderHome() {
         </div>
         <div class="xp-bar-wrap">
           <div class="xp-bar-labels">
-            <span>Progres Level ${lv.level + 1}</span>
+            <span>Menuju Level ${lv.level + 1}</span>
             <span>${lv.currentXp} / ${lv.neededXp} XP</span>
           </div>
           <div class="xp-bar-track">
@@ -233,11 +225,11 @@ function renderHome() {
         <div class="mini-stats-grid">
           <div class="mini-stat">
             <strong>${profile.gamesPlayed}</strong>
-            <span>Ronde Main</span>
+            <span>Main</span>
           </div>
           <div class="mini-stat">
             <strong>${profile.bestStreak}x</strong>
-            <span>Rekor Combo</span>
+            <span>Combo</span>
           </div>
           <div class="mini-stat">
             <strong>${profile.badges.length}/${BADGE_DEFS.length}</strong>
@@ -249,8 +241,8 @@ function renderHome() {
 
     <div class="section-head">
       <div>
-        <h2>🎮 Pilih Arena Permainan (${profile.grade})</h2>
-        <p>7 mode permainan edukasi & simulasi ujian — otomatis menyesuaikan font, animasi & materi jenjang ${profile.grade}.</p>
+        <h2>🎮 Pilih Game (${profile.grade})</h2>
+        <p>Pilih permainan yang kamu suka dan kumpulkan skor tertinggi.</p>
       </div>
     </div>
 

@@ -41,6 +41,7 @@
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .hud-pill.score { background: #fef9c3; border-color: #facc15; color: #854d0e; }
