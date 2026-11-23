@@ -1,6 +1,6 @@
-# 🎓 CerdasPlay v2.0 — Arena Game Edukasi, Kurikulum & TKA (SD • SMP • SMA)
+# 🎓 Makin Cerdas Makin Sukses — Arena Game Edukasi, Kurikulum & TKA (SD • SMP • SMA)
 
-**CerdasPlay** adalah platform game edukasi & simulasi ujian berbasis web untuk pelajar **SD, SMP, hingga SMA/MA/SMK sederajat**. Mencakup materi **Kurikulum Merdeka**, **Kurikulum 2013 (K13)**, **Tes Kemampuan Akademik (TKA 2025/2026)**, **ANBK**, **Ujian Sekolah**, serta **UTBK-SNBT** — dilengkapi animasi & font adaptif per jenjang serta **Studio Musik (Custom & Rekomendasi)**.
+**Makin Cerdas Makin Sukses** adalah platform game edukasi & simulasi ujian berbasis web untuk pelajar **SD, SMP, hingga SMA/MA/SMK sederajat**. Mencakup materi **Kurikulum Merdeka**, **Kurikulum 2013 (K13)**, **Tes Kemampuan Akademik (TKA 2025/2026)**, **ANBK**, **Ujian Sekolah**, serta **UTBK-SNBT** — dilengkapi animasi & font adaptif per jenjang serta **Studio Musik (Custom & Rekomendasi)**.
 
 👉 **Mainkan Langsung**: https://bayuafriyan.github.io/game-afriyan/
 

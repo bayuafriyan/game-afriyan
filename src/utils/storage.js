@@ -10,7 +10,7 @@ export const BADGE_DEFS = [
   { id: 'xp_500', icon: '⚡', name: 'Bintang Belajar', desc: 'Kumpulkan total 500 XP' },
   { id: 'xp_2000', icon: '👑', name: 'Profesor Muda', desc: 'Kumpulkan total 2.000 XP' },
   { id: 'explorer', icon: '🧭', name: 'Penjelajah Arena', desc: 'Coba minimal 4 mini-game berbeda' },
-  { id: 'all_games', icon: '🏆', name: 'Master CerdasPlay', desc: 'Mainkan semua 6 mini-game' },
+  { id: 'all_games', icon: '🏆', name: 'Master Makin Cerdas', desc: 'Mainkan semua mode game edukasi' },
   { id: 'meteor_hero', icon: '☄️', name: 'Penjaga Galaksi', desc: 'Raih skor 150+ di Meteor Hitung' },
   { id: 'memory_pro', icon: '🧠', name: 'Memori Tajam', desc: 'Selesaikan Memori Pasangan' },
 ];
