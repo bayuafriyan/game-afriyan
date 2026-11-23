@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CerdasPlay — Arena Game Edukasi SD, SMP & SMA</title>
+  <meta name="description" content="Platform game edukasi interaktif berbasis pengetahuan untuk pelajar SD, SMP, dan SMA sederajat dengan animasi seru dan 6 pilihan mini-game." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles/main.css" />
+  <link rel="stylesheet" href="styles/games.css" />
+</head>
+<body>
+  <!-- Animated Ambient Background Canvas -->
+  <canvas id="bg-canvas" aria-hidden="true"></canvas>
+  <!-- Celebration / Confetti / Particle Overlay Canvas -->
+  <canvas id="fx-canvas" aria-hidden="true"></canvas>
+
+  <!-- Top Navigation Bar -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button id="btn-home-logo" class="brand" title="Kembali ke Beranda">
+        <span class="brand-icon">🎓</span>
+        <span class="brand-text">
+          <strong>CerdasPlay</strong>
+          <small>Arena Ilmu SD • SMP • SMA</small>
+        </span>
+      </button>
+    </div>
+
+    <div class="topbar-center">
+      <div class="grade-pill-group" role="radiogroup" aria-label="Pilih Jenjang Pendidikan">
+        <button class="grade-pill" data-grade="SD" aria-checked="true">
+          <span class="grade-emoji">🎒</span> SD
+        </button>
+        <button class="grade-pill" data-grade="SMP" aria-checked="false">
+          <span class="grade-emoji">🔬</span> SMP
+        </button>
+        <button class="grade-pill" data-grade="SMA" aria-checked="false">
+          <span class="grade-emoji">🚀</span> SMA
+        </button>
+      </div>
+    </div>
+
+    <div class="topbar-right">
+      <button id="btn-sound" class="icon-btn" title="Suara Efek: Nyala" aria-label="Toggle suara">
+        <span id="sound-icon">🔊</span>
+      </button>
+      <button id="btn-quests" class="icon-btn badge-btn" title="Misi Harian" aria-label="Misi Harian">
+        <span>🎯</span>
+        <span id="quest-dot" class="notif-dot hidden"></span>
+      </button>
+      <button id="btn-profile" class="profile-chip" title="Profil & Lencana">
+        <span id="nav-avatar" class="avatar-mini">🧑‍🚀</span>
+        <div class="profile-chip-info">
+          <span id="nav-name" class="chip-name">Pelajar</span>
+          <span id="nav-level" class="chip-level">Lv. 1 • 0 XP</span>
+        </div>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Viewport -->
+  <main id="app-root" class="app-root">
+    <!-- Dynamic views injected here -->
+  </main>
+
+  <!-- Floating XP / Toast Container -->
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+  <!-- Modal Backdrop -->
+  <div id="modal-backdrop" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+    <div id="modal-content" class="modal-card"></div>
+  </div>
+
+  <script type="module" src="src/app.js"></script>
+</body>
+</html>
