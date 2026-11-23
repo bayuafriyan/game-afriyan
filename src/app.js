@@ -1,6 +1,8 @@
-// CerdasPlay — Main SPA Controller, Home Hub, Modals & Navigation
+// CerdasPlay v2.0 — Main SPA Controller, Grade-Adaptive Themes, Music Studio & 7 Games
 import { sfx } from './utils/audio.js';
 import { fx } from './utils/particles.js';
+import { bgm, RECOMMENDED_TRACKS } from './utils/music.js';
+import { icon } from './utils/icons.js';
 import {
   AVATARS,
   BADGE_DEFS,
@@ -11,6 +13,7 @@ import {
   hasClaimableQuests,
 } from './utils/storage.js';
 
+import { mountTkaExam } from './games/tkaExam.js';
 import { mountQuizBlitz } from './games/quizBlitz.js';
 import { mountMeteorMath } from './games/meteorMath.js';
 import { mountMemoryMatch } from './games/memoryMatch.js';
@@ -20,20 +23,31 @@ import { mountCategorySort } from './games/categorySort.js';
 
 const GAMES = [
   {
+    id: 'tka',
+    featured: true,
+    title: 'Simulasi TKA & Ujian CBT',
+    tag: 'TKA 2025/2026 • US • ANBK • UTBK',
+    iconKey: 'tka',
+    accent: '#fbbf24',
+    bg: 'linear-gradient(135deg, #f59e0b, #ef4444)',
+    desc: 'Latihan ujian model CBT asli lengkap dengan timer, navigasi nomor, tanda ragu-ragu, nilai skala 100 & pembahasan lengkap.',
+    mount: mountTkaExam,
+  },
+  {
     id: 'quiz',
     title: 'Cepat Tepat Arena',
-    tag: 'Kuis • Semua Mapel',
-    icon: '⚡',
+    tag: 'Kuis • Semua Mapel Merdeka & K13',
+    iconKey: 'quiz',
     accent: '#22d3ee',
     bg: 'linear-gradient(135deg, #06b6d4, #6366f1)',
-    desc: 'Jawab soal Matematika, IPA, IPS & Bahasa sebelum waktu habis! Lengkap dengan bantuan 50:50, Bekukan Waktu & kombo.',
+    desc: 'Pilih mata pelajaran favoritmu! Jawab soal ber-timer dengan combo, bantuan 50:50, Bekukan Waktu & pembahasan instan.',
     mount: mountQuizBlitz,
   },
   {
     id: 'meteor',
     title: 'Meteor Hitung',
     tag: 'Aksi Arcade • Matematika',
-    icon: '🚀',
+    iconKey: 'meteor',
     accent: '#f97316',
     bg: 'linear-gradient(135deg, #f97316, #ec4899)',
     desc: 'Lindungi planetmu! Hitung cepat soal matematika pada meteor yang jatuh dan tembakkan laser sebelum menabrak perisai.',
@@ -43,7 +57,7 @@ const GAMES = [
     id: 'memory',
     title: 'Memori Pasangan',
     tag: 'Daya Ingat • Konsep',
-    icon: '🃏',
+    iconKey: 'memory',
     accent: '#a855f7',
     bg: 'linear-gradient(135deg, #8b5cf6, #ec4899)',
     desc: 'Buka kartu animasi 3D dan jodohkan pasangan pengetahuan: rumus kimia, ibu kota, tokoh sejarah, hingga trigonometri.',
@@ -53,7 +67,7 @@ const GAMES = [
     id: 'scramble',
     title: 'Susun Kata Cerdas',
     tag: 'Teka-Teki • Kosakata',
-    icon: '🧩',
+    iconKey: 'scramble',
     accent: '#10b981',
     bg: 'linear-gradient(135deg, #10b981, #22d3ee)',
     desc: 'Rangkai huruf acak menjadi istilah sains, geografi, sejarah, atau ekonomi berdasarkan petunjuk cerdas.',
@@ -63,9 +77,9 @@ const GAMES = [
     id: 'truefalse',
     title: 'Benar atau Mitos?',
     tag: 'Refleks • Fakta Sains',
-    icon: '⚖️',
+    iconKey: 'truefalse',
     accent: '#fbbf24',
-    bg: 'linear-gradient(135deg, #f59e0b, #ef4444)',
+    bg: 'linear-gradient(135deg, #f59e0b, #ec4899)',
     desc: 'Tentukan dalam hitungan detik apakah pernyataan di layar adalah fakta ilmiah atau cuma mitos belaka!',
     mount: mountTrueFalse,
   },
@@ -73,7 +87,7 @@ const GAMES = [
     id: 'sort',
     title: 'Rantai Ilmu',
     tag: 'Klasifikasi • Logika',
-    icon: '🔗',
+    iconKey: 'sort',
     accent: '#38bdf8',
     bg: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
     desc: 'Sortir kartu pengetahuan ke portal kategori yang tepat: hewan, wujud benda, unsur/senyawa, asam/basa, hingga ekonomi.',
@@ -83,16 +97,22 @@ const GAMES = [
 
 const GRADE_INFO = {
   SD: {
-    label: 'Sekolah Dasar (Kelas 1–6)',
-    tagline: 'Belajar berhitung, sains dasar, Nusantara & kosakata sambil berpetualang!',
+    label: 'Sekolah Dasar (Fase A–C • Kelas 1–6)',
+    themeName: 'Tema Petualangan Langit Ceria',
+    tagline: 'Belajar Matematika, IPAS, B. Indonesia, B. Inggris, Pancasila, Seni & persiapan TKA/ANBK SD sambil bermain!',
+    curricula: ['Kurikulum Merdeka', 'K13 Tematik', 'TKA SD (Mat & B.Indo)', 'ANBK & Ujian Sekolah'],
   },
   SMP: {
-    label: 'Sekolah Menengah Pertama (Kelas 7–9)',
-    tagline: 'Asah aljabar, fisika-biologi, unsur kimia, sejarah & literasi dengan seru!',
+    label: 'Sekolah Menengah Pertama (Fase D • Kelas 7–9)',
+    themeName: 'Tema Cyber-Lab Explorer',
+    tagline: 'Asah Matematika, IPA, IPS, Informatika, Bahasa, Pancasila & latihan soal TKA SMP dengan nuansa laboratorium modern!',
+    curricula: ['Kurikulum Merdeka', 'K13 SMP', 'TKA SMP (Mat & B.Indo)', 'Informatika & ANBK'],
   },
   SMA: {
-    label: 'Sekolah Menengah Atas / SMK (Kelas 10–12)',
-    tagline: 'Taklukkan logaritma, turunan, kimia-fisika, ekonomi & penalaran ala UTBK!',
+    label: 'SMA / MA / SMK (Fase E–F • Kelas 10–12)',
+    themeName: 'Tema Aurora Observatory',
+    tagline: 'Taklukkan mapel wajib & pilihan (MIPA, IPS, Bahasa, PKWU) serta simulasi TKA 2025/2026 & UTBK-SNBT!',
+    curricula: ['Kurikulum Merdeka', 'K13 MIPA/IPS', 'TKA SMA Wajib & Pilihan', 'UTBK-SNBT & SMK'],
   },
 };
 
@@ -105,10 +125,10 @@ const modalBackdrop = document.getElementById('modal-backdrop');
 const modalContent = document.getElementById('modal-content');
 const toastContainer = document.getElementById('toast-container');
 
-function showToast(icon, text) {
+function showToast(emojiOrIcon, text) {
   const el = document.createElement('div');
   el.className = 'toast';
-  el.innerHTML = `<span>${icon}</span><span>${text}</span>`;
+  el.innerHTML = `<span>${emojiOrIcon}</span><span>${text}</span>`;
   toastContainer.appendChild(el);
   setTimeout(() => {
     el.classList.add('fade-out');
@@ -116,12 +136,34 @@ function showToast(icon, text) {
   }, 3200);
 }
 
+function applyGradeTheme(grade) {
+  document.documentElement.dataset.grade = grade;
+  fx.setGrade(grade);
+  bgm.recommendForGrade(grade);
+}
+
+function hydrateStaticIcons() {
+  document.getElementById('brand-icon-slot').innerHTML = icon('brand');
+  document.getElementById('music-icon-slot').innerHTML = icon('music');
+  document.getElementById('quest-icon-slot').innerHTML = icon('quest');
+  document.querySelectorAll('.grade-icon-slot').forEach((slot) => {
+    slot.innerHTML = icon(slot.dataset.icon);
+  });
+}
+
+function syncMusicUi(state = bgm.getState()) {
+  const btn = document.getElementById('btn-music');
+  const eq = document.getElementById('music-eq');
+  if (btn) btn.classList.toggle('playing', state.isPlaying);
+  if (eq) eq.classList.toggle('hidden', !state.isPlaying);
+}
+
 function syncTopbar() {
   const lv = getLevelInfo(profile.xp);
   document.getElementById('nav-avatar').textContent = profile.avatar;
   document.getElementById('nav-name').textContent = profile.name;
   document.getElementById('nav-level').textContent = `Lv. ${lv.level} • ${profile.xp} XP`;
-  document.getElementById('sound-icon').textContent = sfx.enabled ? '🔊' : '🔇';
+  document.getElementById('sound-icon').innerHTML = icon(sfx.enabled ? 'soundOn' : 'soundOff');
 
   const questDot = document.getElementById('quest-dot');
   if (questDot) {
@@ -133,6 +175,8 @@ function syncTopbar() {
     btn.classList.toggle('active', active);
     btn.setAttribute('aria-checked', String(active));
   });
+
+  syncMusicUi();
 }
 
 function cleanupCurrentView() {
@@ -145,6 +189,7 @@ function cleanupCurrentView() {
 function renderHome() {
   cleanupCurrentView();
   currentGameId = null;
+  applyGradeTheme(profile.grade);
   syncTopbar();
 
   const lv = getLevelInfo(profile.xp);
@@ -153,14 +198,18 @@ function renderHome() {
   root.innerHTML = `
     <section class="hero-banner">
       <div class="hero-left">
-        <div class="hero-badge">✨ Jenjang Aktif: ${gInfo.label}</div>
+        <div class="hero-badge">✨ ${gInfo.label} • ${gInfo.themeName}</div>
         <h1 class="hero-title">
           Belajar Jadi <span class="gradient-word">Petualangan Seru</span> Tanpa Bosan!
         </h1>
         <p class="hero-desc">${gInfo.tagline}</p>
+        <div class="curriculum-tags">
+          ${gInfo.curricula.map((c) => `<span class="curr-pill">✓ ${c}</span>`).join('')}
+        </div>
         <div class="hero-actions">
-          <button id="btn-quick-play" class="btn btn-primary">🎲 Main Game Acak</button>
-          <button id="btn-open-quests" class="btn btn-secondary">🎯 Misi Harian</button>
+          <button id="btn-start-tka" class="btn btn-amber">🎯 Simulasi TKA & Ujian</button>
+          <button id="btn-quick-play" class="btn btn-primary">🎲 Game Acak</button>
+          <button id="btn-open-music" class="btn btn-secondary">${icon('music')} Studio Musik</button>
         </div>
       </div>
 
@@ -201,7 +250,7 @@ function renderHome() {
     <div class="section-head">
       <div>
         <h2>🎮 Pilih Arena Permainan (${profile.grade})</h2>
-        <p>Semua 6 mini-game otomatis menyesuaikan tingkat materi ${gInfo.label}.</p>
+        <p>7 mode permainan edukasi & simulasi ujian — otomatis menyesuaikan font, animasi & materi jenjang ${profile.grade}.</p>
       </div>
     </div>
 
@@ -209,15 +258,15 @@ function renderHome() {
       ${GAMES.map((game) => {
         const best = profile.highScores[`${game.id}_${profile.grade}`] || 0;
         return `
-          <article class="game-card" data-game="${game.id}" style="--card-accent:${game.accent}; --card-bg:${game.bg};">
+          <article class="game-card ${game.featured ? 'featured-tka' : ''}" data-game="${game.id}" style="--card-accent:${game.accent}; --card-bg:${game.bg};">
             <div class="game-card-top">
-              <div class="game-icon-box">${game.icon}</div>
+              <div class="game-icon-box">${icon(game.iconKey)}</div>
               <span class="game-tag">${game.tag}</span>
             </div>
             <h3>${game.title}</h3>
             <p>${game.desc}</p>
             <div class="game-card-footer">
-              <span class="best-score">${best > 0 ? `🏆 Rekor: ${best}` : '🆕 Belum dimainkan'}</span>
+              <span class="best-score">${best > 0 ? `🏆 Rekor: ${best}` : '🆕 Siap Dimainkan'}</span>
               <span class="play-cta">Mainkan →</span>
             </div>
           </article>
@@ -233,15 +282,20 @@ function renderHome() {
     });
   });
 
+  root.querySelector('#btn-start-tka').addEventListener('click', () => {
+    sfx.click();
+    launchGame('tka');
+  });
+
   root.querySelector('#btn-quick-play').addEventListener('click', () => {
     sfx.click();
     const randomGame = GAMES[Math.floor(Math.random() * GAMES.length)];
     launchGame(randomGame.id);
   });
 
-  root.querySelector('#btn-open-quests').addEventListener('click', () => {
+  root.querySelector('#btn-open-music').addEventListener('click', () => {
     sfx.click();
-    openQuestsModal();
+    openMusicModal();
   });
 }
 
@@ -278,6 +332,111 @@ function openModal(html) {
 
 function closeModal() {
   modalBackdrop.classList.add('hidden');
+}
+
+function openMusicModal() {
+  const st = bgm.getState();
+  openModal(`
+    <div class="modal-header">
+      <h2>${icon('music')} Studio Musik & BGM</h2>
+      <button class="modal-close" id="m-close">✕</button>
+    </div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:0.75rem;margin-bottom:0.8rem;padding:0.75rem 1rem;border-radius:14px;background:rgba(255,255,255,0.06);border:1px solid var(--border);">
+      <div>
+        <div style="font-size:0.75rem;color:var(--text-muted);font-weight:700;">SEDANG DIPILIH</div>
+        <strong style="font-family:var(--font-display);font-size:1.05rem;">${st.currentTitle}</strong>
+      </div>
+      <button id="m-toggle-play" class="btn ${st.isPlaying ? 'btn-danger' : 'btn-success'} btn-sm">
+        ${st.isPlaying ? `${icon('pause')} Jeda` : `${icon('play')} Putar Musik`}
+      </button>
+    </div>
+
+    <div class="volume-row">
+      <span style="font-size:0.84rem;font-weight:700;min-width:82px;">🔊 Volume</span>
+      <input id="m-vol" type="range" min="0" max="1" step="0.05" value="${st.volume}" />
+      <span id="m-vol-val" style="font-size:0.82rem;font-weight:700;min-width:36px;">${Math.round(st.volume * 100)}%</span>
+    </div>
+
+    <div style="font-size:0.85rem;font-weight:800;margin:0.85rem 0 0.5rem;color:var(--accent-cyan);">
+      ✨ Musik Rekomendasi (Bebas Hak Cipta & Offline)
+    </div>
+    <div class="music-track-list">
+      ${RECOMMENDED_TRACKS.map((t) => {
+        const active = st.mode === 'recommended' && st.trackId === t.id;
+        return `
+          <div class="music-track-card ${active ? 'active' : ''}" data-track="${t.id}">
+            <div>
+              <strong style="font-size:0.94rem;">${t.title}</strong>
+              <span class="game-tag" style="margin-left:0.4rem;">${t.badge}</span>
+              <div style="font-size:0.78rem;color:var(--text-muted);margin-top:0.15rem;">${t.desc}</div>
+            </div>
+            <span style="font-weight:800;font-size:0.82rem;color:${active ? 'var(--accent-emerald)' : 'var(--accent-cyan)'};">
+              ${active && st.isPlaying ? '▶ Aktif' : 'Pilih'}
+            </span>
+          </div>
+        `;
+      }).join('')}
+    </div>
+
+    <div style="font-size:0.85rem;font-weight:800;margin:0.9rem 0 0.5rem;color:var(--accent-amber);">
+      🎧 Custom Musik Sendiri (MP3 / WAV / OGG / URL)
+    </div>
+    <div class="music-custom-box">
+      <div style="display:flex;flex-wrap:wrap;gap:0.6rem;align-items:center;margin-bottom:0.75rem;">
+        <label class="btn btn-primary btn-sm" style="cursor:pointer;">
+          ${icon('upload')} Upload Lagu dari Perangkat
+          <input id="m-file-input" type="file" accept="audio/*" style="display:none;" />
+        </label>
+        <span style="font-size:0.78rem;color:var(--text-muted);">
+          ${st.customName ? `Aktif: ${st.customName}` : 'Format: MP3, WAV, M4A, OGG'}
+        </span>
+      </div>
+      <div style="display:flex;gap:0.5rem;">
+        <input id="m-url-input" class="text-input" placeholder="Atau tempel URL audio langsung (https://.../lagu.mp3)" />
+        <button id="m-url-btn" class="btn btn-secondary btn-sm">Putar</button>
+      </div>
+    </div>
+  `);
+
+  modalContent.querySelector('#m-close').addEventListener('click', closeModal);
+
+  modalContent.querySelector('#m-toggle-play').addEventListener('click', () => {
+    bgm.toggle();
+    openMusicModal();
+  });
+
+  const volInput = modalContent.querySelector('#m-vol');
+  const volVal = modalContent.querySelector('#m-vol-val');
+  volInput.addEventListener('input', () => {
+    bgm.setVolume(volInput.value);
+    volVal.textContent = `${Math.round(volInput.value * 100)}%`;
+  });
+
+  modalContent.querySelectorAll('.music-track-card').forEach((card) => {
+    card.addEventListener('click', () => {
+      bgm.selectRecommended(card.dataset.track, true);
+      showToast('🎵', `Memutar: ${bgm.getState().currentTitle}`);
+      openMusicModal();
+    });
+  });
+
+  modalContent.querySelector('#m-file-input').addEventListener('change', (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      bgm.loadCustomFile(file);
+      showToast('🎧', `Memutar lagu custom: ${file.name}`);
+      openMusicModal();
+    }
+  });
+
+  modalContent.querySelector('#m-url-btn').addEventListener('click', () => {
+    const url = modalContent.querySelector('#m-url-input').value.trim();
+    if (!url) return;
+    bgm.loadCustomUrl(url, 'Audio URL Custom');
+    showToast('🎧', 'Memutar musik dari URL custom...');
+    openMusicModal();
+  });
 }
 
 function openProfileModal() {
@@ -427,14 +586,17 @@ function initEvents() {
       sfx.click();
       profile.grade = nextGrade;
       saveProfile(profile);
+      applyGradeTheme(nextGrade);
       syncTopbar();
-      showToast('🎓', `Jenjang diganti ke ${nextGrade}`);
-      if (currentGameId) {
-        launchGame(currentGameId);
-      } else {
-        renderHome();
-      }
+      showToast('🎓', `Jenjang & tema diganti ke ${nextGrade}!`);
+      if (currentGameId) launchGame(currentGameId);
+      else renderHome();
     });
+  });
+
+  document.getElementById('btn-music').addEventListener('click', () => {
+    sfx.click();
+    openMusicModal();
   });
 
   document.getElementById('btn-sound').addEventListener('click', () => {
@@ -456,9 +618,13 @@ function initEvents() {
   modalBackdrop.addEventListener('click', (e) => {
     if (e.target === modalBackdrop) closeModal();
   });
+
+  bgm.onChange((st) => syncMusicUi(st));
 }
 
 // Bootstrap
-fx.init();
+hydrateStaticIcons();
+fx.init(profile.grade);
+applyGradeTheme(profile.grade);
 initEvents();
 renderHome();

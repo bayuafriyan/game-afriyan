@@ -1,18 +1,18 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="id" data-grade="SD">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CerdasPlay — Arena Game Edukasi SD, SMP & SMA</title>
-  <meta name="description" content="Platform game edukasi interaktif berbasis pengetahuan untuk pelajar SD, SMP, dan SMA sederajat dengan animasi seru dan 6 pilihan mini-game." />
+  <title>CerdasPlay — Arena Game Edukasi, Kurikulum & TKA (SD • SMP • SMA)</title>
+  <meta name="description" content="Platform game edukasi interaktif Kurikulum Merdeka, K13, Ujian Sekolah & TKA untuk pelajar SD, SMP, dan SMA sederajat dengan animasi sesuai jenjang dan custom musik." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;600;700;800&family=Outfit:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles/main.css" />
   <link rel="stylesheet" href="styles/games.css" />
 </head>
 <body>
-  <!-- Animated Ambient Background Canvas -->
+  <!-- Grade-Adaptive Animated Background Canvas -->
   <canvas id="bg-canvas" aria-hidden="true"></canvas>
   <!-- Celebration / Confetti / Particle Overlay Canvas -->
   <canvas id="fx-canvas" aria-hidden="true"></canvas>
@@ -21,10 +21,10 @@
   <header class="topbar">
     <div class="topbar-left">
       <button id="btn-home-logo" class="brand" title="Kembali ke Beranda">
-        <span class="brand-icon">🎓</span>
+        <span class="brand-icon" id="brand-icon-slot"></span>
         <span class="brand-text">
           <strong>CerdasPlay</strong>
-          <small>Arena Ilmu SD • SMP • SMA</small>
+          <small id="brand-subtitle">Kurikulum Merdeka • K13 • TKA</small>
         </span>
       </button>
     </div>
@@ -32,23 +32,29 @@
     <div class="topbar-center">
       <div class="grade-pill-group" role="radiogroup" aria-label="Pilih Jenjang Pendidikan">
         <button class="grade-pill" data-grade="SD" aria-checked="true">
-          <span class="grade-emoji">🎒</span> SD
+          <span class="grade-icon-slot" data-icon="sd"></span> SD
         </button>
         <button class="grade-pill" data-grade="SMP" aria-checked="false">
-          <span class="grade-emoji">🔬</span> SMP
+          <span class="grade-icon-slot" data-icon="smp"></span> SMP
         </button>
         <button class="grade-pill" data-grade="SMA" aria-checked="false">
-          <span class="grade-emoji">🚀</span> SMA
+          <span class="grade-icon-slot" data-icon="sma"></span> SMA
         </button>
       </div>
     </div>
 
     <div class="topbar-right">
-      <button id="btn-sound" class="icon-btn" title="Suara Efek: Nyala" aria-label="Toggle suara">
-        <span id="sound-icon">🔊</span>
+      <button id="btn-music" class="icon-btn music-btn" title="Studio Musik & BGM" aria-label="Studio Musik">
+        <span id="music-icon-slot"></span>
+        <span id="music-eq" class="eq-bars hidden" aria-hidden="true">
+          <i></i><i></i><i></i>
+        </span>
+      </button>
+      <button id="btn-sound" class="icon-btn" title="Efek Suara: Nyala" aria-label="Toggle efek suara">
+        <span id="sound-icon"></span>
       </button>
       <button id="btn-quests" class="icon-btn badge-btn" title="Misi Harian" aria-label="Misi Harian">
-        <span>🎯</span>
+        <span id="quest-icon-slot"></span>
         <span id="quest-dot" class="notif-dot hidden"></span>
       </button>
       <button id="btn-profile" class="profile-chip" title="Profil & Lencana">

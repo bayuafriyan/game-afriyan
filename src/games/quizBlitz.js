@@ -1,5 +1,5 @@
-// Game 1: Cepat Tepat Arena (Quiz Blitz)
-import { QUIZ_BANK } from '../data/questions.js';
+// Game 1: Cepat Tepat Arena (Quiz Blitz — Semua Mapel Kurikulum Merdeka, K13 & TKA)
+import { QUIZ_BANK, SUBJECT_LIST } from '../data/questions.js';
 import { sfx } from '../utils/audio.js';
 import { fx } from '../utils/particles.js';
 
@@ -14,6 +14,7 @@ function shuffle(arr) {
 
 export function mountQuizBlitz(container, ctx) {
   const { grade, onFinish, onBack } = ctx;
+  const subjects = SUBJECT_LIST[grade] || ['Semua'];
   let selectedSubject = 'Semua';
   let questions = [];
   let index = 0;
@@ -29,8 +30,6 @@ export function mountQuizBlitz(container, ctx) {
   let timerId = null;
   let lifelines = { fifty: true, freeze: true, skip: true };
 
-  const subjects = ['Semua', 'Matematika', 'IPA', 'IPS', 'Bahasa'];
-
   function stopTimer() {
     if (timerId) {
       clearInterval(timerId);
@@ -43,7 +42,7 @@ export function mountQuizBlitz(container, ctx) {
     selectedSubject = subject;
     const pool = QUIZ_BANK[grade] || QUIZ_BANK.SD;
     const filtered = subject === 'Semua' ? pool : pool.filter((q) => q.subject === subject);
-    questions = shuffle(filtered).slice(0, Math.min(10, filtered.length));
+    questions = shuffle(filtered.length > 0 ? filtered : pool).slice(0, Math.min(10, filtered.length || pool.length));
     index = 0;
     score = 0;
     streak = 0;
@@ -56,7 +55,7 @@ export function mountQuizBlitz(container, ctx) {
 
   function startTimer() {
     stopTimer();
-    maxTime = grade === 'SD' ? 22 : grade === 'SMP' ? 20 : 18;
+    maxTime = grade === 'SD' ? 24 : grade === 'SMP' ? 20 : 18;
     timeLeft = maxTime;
     frozen = false;
 
@@ -118,7 +117,6 @@ export function mountQuizBlitz(container, ctx) {
       }
     }
 
-    // Update HUD
     const scoreEl = container.querySelector('#qz-score');
     const streakEl = container.querySelector('#qz-streak');
     const livesEl = container.querySelector('#qz-lives');
@@ -126,7 +124,6 @@ export function mountQuizBlitz(container, ctx) {
     if (streakEl) streakEl.textContent = `${streak}x`;
     if (livesEl) livesEl.textContent = '❤️'.repeat(Math.max(0, lives)) || '💔';
 
-    // Show explanation
     const expWrap = container.querySelector('#qz-exp-wrap');
     if (expWrap) {
       const isLast = index >= questions.length - 1 || lives <= 0;
@@ -140,9 +137,8 @@ export function mountQuizBlitz(container, ctx) {
       `;
       expWrap.querySelector('#qz-next').addEventListener('click', () => {
         sfx.click();
-        if (isLast) {
-          finishGame();
-        } else {
+        if (isLast) finishGame();
+        else {
           index++;
           renderQuestion();
         }
@@ -229,7 +225,7 @@ export function mountQuizBlitz(container, ctx) {
           </div>
 
           <div class="quiz-header-meta">
-            <span class="subject-badge">📘 ${q.subject} • ${grade}</span>
+            <span class="subject-badge">📘 ${q.subject} • ${q.tag || q.curriculum || grade}</span>
             <div class="lifelines-bar">
               <button id="ll-50" class="lifeline-btn" ${lifelines.fifty ? '' : 'disabled'}>✂️ 50:50</button>
               <button id="ll-freeze" class="lifeline-btn" ${lifelines.freeze ? '' : 'disabled'}>❄️ Bekukan</button>
@@ -276,7 +272,6 @@ export function mountQuizBlitz(container, ctx) {
       });
     });
 
-    // Lifelines
     container.querySelector('#ll-50').addEventListener('click', (e) => {
       if (!lifelines.fifty || answered) return;
       lifelines.fifty = false;
@@ -306,9 +301,8 @@ export function mountQuizBlitz(container, ctx) {
       e.currentTarget.disabled = true;
       sfx.click();
       stopTimer();
-      if (index >= questions.length - 1) {
-        finishGame();
-      } else {
+      if (index >= questions.length - 1) finishGame();
+      else {
         index++;
         renderQuestion();
       }
@@ -318,8 +312,5 @@ export function mountQuizBlitz(container, ctx) {
   }
 
   startRound('Semua');
-
-  return () => {
-    stopTimer();
-  };
+  return () => stopTimer();
 }
