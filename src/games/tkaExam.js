@@ -129,7 +129,7 @@ export function mountTkaExam(container, ctx) {
                     <p class="tka-review-q">${q.q}</p>
                     <p class="tka-review-ans">
                       Jawabanmu: <strong>${userAns !== undefined ? q.options[userAns] : 'Tidak dijawab'}</strong>
-                      ${!ok ? ` • Kunci: <strong style="color:var(--accent-emerald);">${q.options[q.answer]}</strong>` : ''}
+                      ${!ok ? ` • Kunci: <strong style="color:#15803d;">${q.options[q.answer]}</strong>` : ''}
                     </p>
                     <p class="tka-review-exp">💡 ${q.exp}</p>
                   </div>
@@ -188,7 +188,7 @@ export function mountTkaExam(container, ctx) {
             </div>
 
             <div class="quiz-question-box">
-              <span style="color:var(--accent-cyan);margin-right:0.4rem;">${cur + 1}.</span>${q.q}
+              <span style="color:var(--primary);margin-right:0.4rem;">${cur + 1}.</span>${q.q}
             </div>
 
             <div class="options-grid">

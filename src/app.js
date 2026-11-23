@@ -258,16 +258,18 @@ function renderHome() {
       ${GAMES.map((game) => {
         const best = profile.highScores[`${game.id}_${profile.grade}`] || 0;
         return `
-          <article class="game-card ${game.featured ? 'featured-tka' : ''}" data-game="${game.id}" style="--card-accent:${game.accent}; --card-bg:${game.bg};">
-            <div class="game-card-top">
+          <article class="game-card ${game.featured ? 'featured-tka' : ''}" data-game="${game.id}" style="--card-bg-banner:${game.bg};">
+            <div class="game-card-banner">
               <div class="game-icon-box">${icon(game.iconKey)}</div>
               <span class="game-tag">${game.tag}</span>
             </div>
-            <h3>${game.title}</h3>
-            <p>${game.desc}</p>
-            <div class="game-card-footer">
-              <span class="best-score">${best > 0 ? `🏆 Rekor: ${best}` : '🆕 Siap Dimainkan'}</span>
-              <span class="play-cta">Mainkan →</span>
+            <div class="game-card-body">
+              <h3>${game.title}</h3>
+              <p>${game.desc}</p>
+              <div class="game-card-footer">
+                <span class="best-score">${best > 0 ? `🏆 Rekor: ${best}` : '🆕 Baru'}</span>
+                <span class="play-cta">MAIN ▶</span>
+              </div>
             </div>
           </article>
         `;
@@ -342,10 +344,10 @@ function openMusicModal() {
       <button class="modal-close" id="m-close">✕</button>
     </div>
 
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:0.75rem;margin-bottom:0.8rem;padding:0.75rem 1rem;border-radius:14px;background:rgba(255,255,255,0.06);border:1px solid var(--border);">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:0.75rem;margin-bottom:0.8rem;padding:0.8rem 1rem;border-radius:16px;background:#f1f5f9;border:2px solid #cbd5e1;">
       <div>
-        <div style="font-size:0.75rem;color:var(--text-muted);font-weight:700;">SEDANG DIPILIH</div>
-        <strong style="font-family:var(--font-display);font-size:1.05rem;">${st.currentTitle}</strong>
+        <div style="font-size:0.73rem;color:var(--text-muted);font-weight:800;">SEDANG DIPILIH</div>
+        <strong style="font-family:var(--font-display);font-size:1.05rem;color:#0f172a;">${st.currentTitle}</strong>
       </div>
       <button id="m-toggle-play" class="btn ${st.isPlaying ? 'btn-danger' : 'btn-success'} btn-sm">
         ${st.isPlaying ? `${icon('pause')} Jeda` : `${icon('play')} Putar Musik`}
@@ -353,12 +355,12 @@ function openMusicModal() {
     </div>
 
     <div class="volume-row">
-      <span style="font-size:0.84rem;font-weight:700;min-width:82px;">🔊 Volume</span>
+      <span style="font-size:0.84rem;font-weight:800;min-width:82px;color:#0f172a;">🔊 Volume</span>
       <input id="m-vol" type="range" min="0" max="1" step="0.05" value="${st.volume}" />
-      <span id="m-vol-val" style="font-size:0.82rem;font-weight:700;min-width:36px;">${Math.round(st.volume * 100)}%</span>
+      <span id="m-vol-val" style="font-size:0.82rem;font-weight:800;min-width:36px;color:#0f172a;">${Math.round(st.volume * 100)}%</span>
     </div>
 
-    <div style="font-size:0.85rem;font-weight:800;margin:0.85rem 0 0.5rem;color:var(--accent-cyan);">
+    <div style="font-size:0.85rem;font-weight:800;margin:0.85rem 0 0.5rem;color:var(--primary);">
       ✨ Musik Rekomendasi (Bebas Hak Cipta & Offline)
     </div>
     <div class="music-track-list">
@@ -367,11 +369,11 @@ function openMusicModal() {
         return `
           <div class="music-track-card ${active ? 'active' : ''}" data-track="${t.id}">
             <div>
-              <strong style="font-size:0.94rem;">${t.title}</strong>
-              <span class="game-tag" style="margin-left:0.4rem;">${t.badge}</span>
-              <div style="font-size:0.78rem;color:var(--text-muted);margin-top:0.15rem;">${t.desc}</div>
+              <strong style="font-size:0.94rem;color:#0f172a;">${t.title}</strong>
+              <span style="display:inline-block;margin-left:0.4rem;font-size:0.7rem;font-weight:800;padding:0.18rem 0.55rem;border-radius:8px;background:#e0f2fe;color:#0369a1;">${t.badge}</span>
+              <div style="font-size:0.78rem;color:var(--text-muted);margin-top:0.15rem;font-weight:600;">${t.desc}</div>
             </div>
-            <span style="font-weight:800;font-size:0.82rem;color:${active ? 'var(--accent-emerald)' : 'var(--accent-cyan)'};">
+            <span style="font-weight:800;font-size:0.82rem;color:${active ? '#16a34a' : 'var(--primary)'};">
               ${active && st.isPlaying ? '▶ Aktif' : 'Pilih'}
             </span>
           </div>
@@ -379,7 +381,7 @@ function openMusicModal() {
       }).join('')}
     </div>
 
-    <div style="font-size:0.85rem;font-weight:800;margin:0.9rem 0 0.5rem;color:var(--accent-amber);">
+    <div style="font-size:0.85rem;font-weight:800;margin:0.9rem 0 0.5rem;color:#b45309;">
       🎧 Custom Musik Sendiri (MP3 / WAV / OGG / URL)
     </div>
     <div class="music-custom-box">
@@ -465,7 +467,7 @@ function openProfileModal() {
 
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
       <strong style="font-family:var(--font-display);font-size:1.05rem;">🏅 Koleksi Lencana (${profile.badges.length}/${BADGE_DEFS.length})</strong>
-      <span style="font-size:0.8rem;color:var(--accent-cyan);">Lv. ${lv.level} • ${lv.rank}</span>
+      <span style="font-size:0.8rem;color:var(--primary);font-weight:800;">Lv. ${lv.level} • ${lv.rank}</span>
     </div>
 
     <div class="badges-grid">

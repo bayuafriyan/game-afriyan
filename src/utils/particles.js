@@ -1,9 +1,9 @@
-// Grade-Adaptive Ambient Background Canvas + Celebration Confetti & Sparkle Particle Engine
+// Grade-Adaptive Bright Game World Background Canvas + Celebration Confetti Particle Engine
 
 const GRADE_PALETTES = {
-  SD: ['#fde047', '#38bdf8', '#34d399', '#fb923c', '#f472b6', '#ffffff'],
-  SMP: ['#22d3ee', '#818cf8', '#a855f7', '#38bdf8', '#2dd4bf'],
-  SMA: ['#fbbf24', '#f472b6', '#fb923c', '#c084fc', '#e2e8f0'],
+  SD: ['#facc15', '#38bdf8', '#22c55e', '#fb923c', '#f472b6', '#ffffff'],
+  SMP: ['#4f46e5', '#06b6d4', '#10b981', '#8b5cf6', '#f59e0b'],
+  SMA: ['#ea580c', '#0f172a', '#eab308', '#3b82f6', '#10b981'],
 };
 
 class ParticleFX {
@@ -53,46 +53,36 @@ class ParticleFX {
     const w = window.innerWidth;
     const h = window.innerHeight;
     const palette = GRADE_PALETTES[this.grade] || GRADE_PALETTES.SD;
-    const count = this.grade === 'SD' ? 38 : this.grade === 'SMP' ? 46 : 56;
+    const count = this.grade === 'SD' ? 14 : this.grade === 'SMP' ? 24 : 22;
 
     this.nodes = Array.from({ length: count }, () => ({
       x: Math.random() * w,
       y: Math.random() * h,
-      r: this.grade === 'SD' ? 4 + Math.random() * 8 : this.grade === 'SMP' ? 3 + Math.random() * 6 : 1.5 + Math.random() * 2.5,
-      vx: (Math.random() - 0.5) * (this.grade === 'SMA' ? 0.35 : 0.45),
-      vy: this.grade === 'SD' ? -(0.2 + Math.random() * 0.45) : (Math.random() - 0.5) * 0.4,
-      alpha: 0.22 + Math.random() * 0.45,
+      r: this.grade === 'SD' ? 24 + Math.random() * 26 : 10 + Math.random() * 14,
+      vx: this.grade === 'SD' ? 0.18 + Math.random() * 0.25 : (Math.random() - 0.5) * 0.3,
+      vy: this.grade === 'SD' ? (Math.random() - 0.5) * 0.06 : -0.15 - Math.random() * 0.2,
+      alpha: this.grade === 'SD' ? 0.35 + Math.random() * 0.3 : 0.1 + Math.random() * 0.12,
       rot: Math.random() * Math.PI * 2,
-      vRot: (Math.random() - 0.5) * 0.02,
+      vRot: (Math.random() - 0.5) * 0.012,
       color: palette[Math.floor(Math.random() * palette.length)],
-      kind: Math.random() > 0.5 ? 'star' : 'bubble',
     }));
   }
 
-  _drawStar(ctx, x, y, r, rot) {
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(rot);
+  _drawCloud(ctx, x, y, s) {
     ctx.beginPath();
-    for (let i = 0; i < 5; i++) {
-      const a = (i * 4 * Math.PI) / 5 - Math.PI / 2;
-      const px = Math.cos(a) * r;
-      const py = Math.sin(a) * r;
-      if (i === 0) ctx.moveTo(px, py);
-      else ctx.lineTo(px, py);
-    }
-    ctx.closePath();
+    ctx.arc(x, y, s * 0.55, 0, Math.PI * 2);
+    ctx.arc(x + s * 0.48, y - s * 0.15, s * 0.48, 0, Math.PI * 2);
+    ctx.arc(x + s * 0.95, y, s * 0.45, 0, Math.PI * 2);
     ctx.fill();
-    ctx.restore();
   }
 
-  _drawHex(ctx, x, y, r, rot) {
+  _drawShape(ctx, x, y, r, rot, sides) {
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(rot);
     ctx.beginPath();
-    for (let i = 0; i < 6; i++) {
-      const a = (i * Math.PI) / 3;
+    for (let i = 0; i < sides; i++) {
+      const a = (i * Math.PI * 2) / sides;
       const px = Math.cos(a) * r;
       const py = Math.sin(a) * r;
       if (i === 0) ctx.moveTo(px, py);
@@ -116,57 +106,23 @@ class ParticleFX {
         n.y += n.vy;
         n.rot += n.vRot;
 
-        if (n.y < -20) { n.y = h + 20; n.x = Math.random() * w; }
-        if (n.y > h + 20) n.y = -20;
-        if (n.x < -20) n.x = w + 20;
-        if (n.x > w + 20) n.x = -20;
+        if (n.x > w + 80) n.x = -80;
+        if (n.x < -80) n.x = w + 80;
+        if (n.y < -50) { n.y = h + 50; n.x = Math.random() * w; }
+        if (n.y > h + 50) n.y = -50;
 
         ctx.globalAlpha = n.alpha;
-        ctx.fillStyle = n.color;
-        ctx.strokeStyle = n.color;
-
         if (this.grade === 'SD') {
-          // Playful floating stars & soft bubbles
-          if (n.kind === 'star') {
-            this._drawStar(ctx, n.x, n.y, n.r, n.rot);
-          } else {
-            ctx.lineWidth = 1.6;
-            ctx.beginPath();
-            ctx.arc(n.x, n.y, n.r * 0.9, 0, Math.PI * 2);
-            ctx.stroke();
-          }
+          ctx.fillStyle = '#ffffff';
+          this._drawCloud(ctx, n.x, n.y, n.r);
         } else if (this.grade === 'SMP') {
-          // Cyber-Lab glowing hexagons & dots
-          ctx.lineWidth = 1.4;
-          this._drawHex(ctx, n.x, n.y, n.r * 1.4, n.rot);
-          ctx.beginPath();
-          ctx.arc(n.x, n.y, 1.8, 0, Math.PI * 2);
-          ctx.fill();
+          ctx.strokeStyle = n.color;
+          ctx.lineWidth = 2.2;
+          this._drawShape(ctx, n.x, n.y, n.r, n.rot, 6);
         } else {
-          // SMA Aurora constellation dots
-          ctx.beginPath();
-          ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      }
-
-      // SMA Constellation lines
-      if (this.grade === 'SMA') {
-        ctx.lineWidth = 0.8;
-        for (let i = 0; i < this.nodes.length; i++) {
-          for (let j = i + 1; j < this.nodes.length; j++) {
-            const dx = this.nodes[i].x - this.nodes[j].x;
-            const dy = this.nodes[i].y - this.nodes[j].y;
-            const dist = Math.hypot(dx, dy);
-            if (dist < 130) {
-              ctx.globalAlpha = (1 - dist / 130) * 0.18;
-              ctx.strokeStyle = '#f472b6';
-              ctx.beginPath();
-              ctx.moveTo(this.nodes[i].x, this.nodes[i].y);
-              ctx.lineTo(this.nodes[j].x, this.nodes[j].y);
-              ctx.stroke();
-            }
-          }
+          ctx.strokeStyle = n.color;
+          ctx.lineWidth = 2;
+          this._drawShape(ctx, n.x, n.y, n.r, n.rot, 4);
         }
       }
 
@@ -186,7 +142,7 @@ class ParticleFX {
         y,
         vx: Math.cos(angle) * speed,
         vy: Math.sin(angle) * speed - 2.2,
-        size: 4 + Math.random() * 5,
+        size: 5 + Math.random() * 5,
         color: palette[Math.floor(Math.random() * palette.length)],
         life: 1,
         decay: 0.018 + Math.random() * 0.015,
@@ -207,7 +163,7 @@ class ParticleFX {
         y: -20 - Math.random() * 120,
         vx: (Math.random() - 0.5) * 4,
         vy: 2.5 + Math.random() * 4.5,
-        size: 6 + Math.random() * 6,
+        size: 7 + Math.random() * 6,
         color: palette[Math.floor(Math.random() * palette.length)],
         life: 1,
         decay: 0.006 + Math.random() * 0.006,

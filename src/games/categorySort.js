@@ -171,7 +171,7 @@ export function mountCategorySort(container, ctx) {
           ${
             feedback
               ? `
-            <div class="explanation-box" style="margin-top:1.1rem;border-color:${feedback.ok ? 'var(--accent-emerald)' : 'var(--accent-rose)'};">
+            <div class="explanation-box" style="margin-top:1.1rem;border-color:${feedback.ok ? '#22c55e' : '#ef4444'};">
               <p>${feedback.text}</p>
             </div>
           `
