@@ -1,6 +1,6 @@
 # 🎓 Makin Cerdas Makin Sukses | Arena Game Edukasi (SD, SMP & SMA)
 
-**Makin Cerdas Makin Sukses** adalah platform game edukasi dan latihan ujian berbasis web untuk pelajar **SD, SMP, hingga SMA/MA/SMK sederajat**. Mencakup materi **Kurikulum Merdeka**, **Kurikulum 2013 (K13)**, latihan **TKA**, **ANBK**, **Ujian Sekolah**, **UTBK-SNBT**, serta **Arena 3 Bahasa (Inggris, Jepang, Mandarin)** lengkap dengan animasi adaptif per jenjang dan **Studio Musik (Custom & Rekomendasi)**.
+**Makin Cerdas Makin Sukses** adalah platform game edukasi dan latihan ujian berbasis web untuk pelajar **SD, SMP, hingga SMA/MA/SMK sederajat**. Mencakup materi **Kurikulum Merdeka**, **Kurikulum 2013 (K13)**, latihan **TKA**, **ANBK**, **Ujian Sekolah**, **UTBK-SNBT**, **Arena 3 Bahasa (Inggris CEFR, Jepang JLPT, Mandarin YCT/HSK dengan 3.150+ kosakata terverifikasi / 1.053 konsep × 3 bahasa)** lengkap dengan animasi adaptif per jenjang dan **Studio Musik (Custom & Rekomendasi)**.
 
 👉 **Mainkan Langsung**: https://bayuafriyan.github.io/game-afriyan/
 
@@ -8,7 +8,7 @@
 
 ## 🎮 8 Pilihan Mode Game & Latihan
 
-1. **🌍 Bahasa Inggris, Jepang & Mandarin**: Latihan **Speaking** interaktif pakai mikrofon + audio native, **Writing** (kanvas tracing aksara Jepang/Mandarin & ejaan Inggris), **Dialog NPC**, dan **Kartu 3 Bahasa**.
+1. **🌍 Bahasa Inggris, Jepang & Mandarin (3.150+ Kosakata)**: Dilengkapi filter per topik, latihan **Speaking** interaktif pakai mikrofon + audio native, **Writing** (kanvas tracing aksara Jepang/Mandarin & ejaan Inggris), **Kuis Kosakata** seimbang, **Dialog NPC** di tiap jenjang, dan **Kamus 3 Bahasa** dengan pencarian instan.
 2. **🎯 Simulasi TKA & Ujian CBT**: Latihan ujian dengan timer, navigasi nomor soal, tombol tandai ragu, skor skala 0 hingga 100, serta pembahasan lengkap setiap nomor.
 3. **⚡ Cepat Tepat**: Kuis interaktif dengan filter semua mata pelajaran sesuai jenjang, bantuan *50:50*, *Bekukan Waktu*, *Lewati*, combo, dan pengacakan posisi jawaban A/B/C/D seimbang.
 4. **🚀 Meteor Hitung**: Game aksi Canvas 2D! Tembak jatuh meteor berisi soal matematika (aritmetika SD, aljabar/akar SMP, logaritma/turunan/matriks SMA) menggunakan laser.

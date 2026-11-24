@@ -1,9 +1,15 @@
 // Arena Bahasa Dunia: Inggris (CEFR), Jepang (JLPT), Mandarin (YCT/HSK)
-// 4 Mode Interaktif: Speaking (Mic), Writing (Canvas Tracing & Spelling), Dialog NPC, dan Kartu 3 Bahasa
+// 5 Mode Interaktif: Speaking (Mic), Writing (Kanvas & Ejaan), Kuis Kosakata, Dialog NPC, dan Kamus 3 Bahasa (3.150+ Kata)
 
-import { LANG_META, LANG_VOCAB, LANG_DIALOGUES } from '../data/languageData.js';
+import {
+  LANG_META,
+  LANG_VOCAB,
+  LANG_TOPICS,
+  TOTAL_VOCAB_STATS,
+  LANG_DIALOGUES,
+} from '../data/languageData.js';
 import { speakNative, startListening, isSpeechRecognitionSupported, evaluateSpeech } from '../utils/speech.js';
-import { shuffleArray, escapeHtml } from '../utils/quizHelper.js';
+import { shuffleArray, prepareBalancedQuestions, escapeHtml } from '../utils/quizHelper.js';
 import { sfx } from '../utils/audio.js';
 import { fx } from '../utils/particles.js';
 
@@ -15,11 +21,18 @@ const TONE_LABELS = {
   0: 'Nada Netral',
 };
 
+const CARDS_PER_PAGE = 24;
+
 export function mountLanguageArena(container, ctx) {
   const { grade, onFinish, onBack } = ctx;
   let lang = 'en'; // 'en' | 'ja' | 'zh'
-  let mode = 'speaking'; // 'speaking' | 'writing' | 'dialog' | 'cards'
+  let mode = 'speaking'; // 'speaking' | 'writing' | 'quiz' | 'dialog' | 'cards'
   let showGuide = true;
+  let selectedTopic = 'Semua';
+  let cardsScope = 'grade'; // 'grade' | 'all'
+  let searchQuery = '';
+  let page = 0;
+
   let idx = 0;
   let score = 0;
   let completed = 0;
@@ -30,6 +43,16 @@ export function mountLanguageArena(container, ctx) {
   let writeFeedback = null;
   let strokeCountDrawn = 0;
 
+  // Quiz state
+  let quizQuestions = [];
+  let quizIdx = 0;
+  let quizAnswered = false;
+  let quizSelectedIdx = null;
+  let quizCorrect = 0;
+  let quizStreak = 0;
+  let quizMaxStreak = 0;
+  let quizFinished = false;
+
   let unmounted = false;
   let traceCleanup = null;
   let currentDialogOpts = null;
@@ -37,6 +60,8 @@ export function mountLanguageArena(container, ctx) {
   let selectedDialogOptIdx = null;
   let sessionCounted = false;
   const rewardedKeys = new Set();
+
+  const allConcepts = [...LANG_VOCAB.SD, ...LANG_VOCAB.SMP, ...LANG_VOCAB.SMA];
 
   function cleanupTrace() {
     if (traceCleanup) {
@@ -54,8 +79,43 @@ export function mountLanguageArena(container, ctx) {
     isListening = false;
   }
 
-  function getVocabList() {
+  function getBaseVocabList() {
+    if (mode === 'cards' && cardsScope === 'all') {
+      return allConcepts;
+    }
     return LANG_VOCAB[grade] || LANG_VOCAB.SD;
+  }
+
+  function getTopicList() {
+    if (mode === 'cards' && cardsScope === 'all') {
+      return [...new Set(allConcepts.map((x) => x.topic))];
+    }
+    return LANG_TOPICS[grade] || [];
+  }
+
+  function getActiveVocabList() {
+    const base = getBaseVocabList();
+    if (selectedTopic === 'Semua') return base;
+    const filtered = base.filter((x) => x.topic === selectedTopic);
+    return filtered.length > 0 ? filtered : base;
+  }
+
+  function getFilteredCards() {
+    const list = getActiveVocabList();
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return list;
+    return list.filter((item) => {
+      return (
+        item.id.toLowerCase().includes(q) ||
+        item.topic.toLowerCase().includes(q) ||
+        item.en.text.toLowerCase().includes(q) ||
+        item.ja.text.toLowerCase().includes(q) ||
+        item.ja.reading.toLowerCase().includes(q) ||
+        item.ja.romaji.toLowerCase().includes(q) ||
+        item.zh.text.toLowerCase().includes(q) ||
+        item.zh.pinyin.toLowerCase().includes(q)
+      );
+    });
   }
 
   function getDialogList() {
@@ -95,13 +155,83 @@ export function mountLanguageArena(container, ctx) {
     selectedDialogOptIdx = null;
   }
 
+  function buildVocabQuiz() {
+    const active = getActiveVocabList();
+    const fullGradePool = LANG_VOCAB[grade] || LANG_VOCAB.SD;
+    const meta = LANG_META[lang];
+    const picked = shuffleArray(active).slice(0, Math.min(10, active.length));
+
+    const raw = picked.map((item, qIdx) => {
+      const targetData = item[lang];
+      const askMeaning = qIdx % 2 === 0;
+      const distractors = [];
+      const seenForeign = new Set([targetData.text.toLowerCase()]);
+      const seenIndo = new Set([item.id.toLowerCase()]);
+
+      for (const cand of shuffleArray(fullGradePool)) {
+        if (distractors.length >= 3) break;
+        const fKey = cand[lang].text.toLowerCase();
+        const iKey = cand.id.toLowerCase();
+        if (seenForeign.has(fKey) || seenIndo.has(iKey)) continue;
+        seenForeign.add(fKey);
+        seenIndo.add(iKey);
+        distractors.push(cand);
+      }
+
+      if (askMeaning) {
+        const readingHint = lang === 'en' ? '' : lang === 'ja' ? `${targetData.reading} (${targetData.romaji})` : targetData.pinyin;
+        return {
+          concept_id: item.concept_id,
+          topic: item.topic,
+          speakText: targetData.text,
+          prompt: `Apa arti dari "${targetData.text}"?`,
+          hintLine: showGuide && readingHint ? readingHint : '',
+          options: [item.id, ...distractors.map((d) => d.id)],
+          answer: 0,
+          exp: `${targetData.text}${readingHint ? ` (${readingHint})` : ''} berarti "${item.id}".`,
+        };
+      }
+
+      const formatForeignOpt = (entry) => {
+        const d = entry[lang];
+        if (!showGuide || lang === 'en') return d.text;
+        const r = lang === 'ja' ? d.romaji : d.pinyin;
+        return `${d.text} (${r})`;
+      };
+      return {
+        concept_id: item.concept_id,
+        topic: item.topic,
+        speakText: targetData.text,
+        prompt: `Pilih ${meta.name} untuk "${item.id}":`,
+        hintLine: `Topik: ${item.topic}`,
+        options: [formatForeignOpt(item), ...distractors.map(formatForeignOpt)],
+        answer: 0,
+        exp: `"${item.id}" dalam ${meta.name} adalah "${targetData.text}"${lang !== 'en' ? ` (${lang === 'ja' ? `${targetData.reading} / ${targetData.romaji}` : targetData.pinyin})` : ''}.`,
+      };
+    });
+
+    quizQuestions = prepareBalancedQuestions(raw, raw.length);
+    quizIdx = 0;
+    quizAnswered = false;
+    quizSelectedIdx = null;
+    quizCorrect = 0;
+    quizStreak = 0;
+    quizMaxStreak = 0;
+    quizFinished = false;
+  }
+
   function renderHeader() {
     const meta = LANG_META[lang];
+    const baseList = getBaseVocabList();
+    const topics = getTopicList();
+    const showTopicBar = mode !== 'dialog';
+
     return `
       <div class="game-hud">
         <div class="hud-group">
           <button id="lg-back" class="btn btn-secondary btn-sm">← Kembali</button>
           <span class="hud-pill">${meta.flag} ${meta.name} (${meta.levelLabel[grade]})</span>
+          <span class="hud-pill">📚 ${TOTAL_VOCAB_STATS.totalWords.toLocaleString('id-ID')}+ Kosakata</span>
         </div>
         <div class="hud-group">
           <button id="lg-toggle-guide" class="lifeline-btn">${showGuide ? '👁️ Bantuan: ON' : '🙈 Bantuan: OFF'}</button>
@@ -124,18 +254,55 @@ export function mountLanguageArena(container, ctx) {
       <div class="filter-row">
         <button class="filter-chip ${mode === 'speaking' ? 'active' : ''}" data-mode="speaking">🗣️ Speaking (Suara)</button>
         <button class="filter-chip ${mode === 'writing' ? 'active' : ''}" data-mode="writing">✍️ Writing (Menulis)</button>
+        <button class="filter-chip ${mode === 'quiz' ? 'active' : ''}" data-mode="quiz">⚡ Kuis Kosakata</button>
         <button class="filter-chip ${mode === 'dialog' ? 'active' : ''}" data-mode="dialog">💬 Dialog NPC</button>
-        <button class="filter-chip ${mode === 'cards' ? 'active' : ''}" data-mode="cards">🎴 Kartu 3 Bahasa</button>
+        <button class="filter-chip ${mode === 'cards' ? 'active' : ''}" data-mode="cards">🎴 Kamus 3 Bahasa</button>
       </div>
+
+      ${
+        showTopicBar
+          ? `
+        <div class="lang-toolbar">
+          <select id="lg-topic" class="lang-topic-select" aria-label="Filter Topik Kosakata">
+            <option value="Semua" ${selectedTopic === 'Semua' ? 'selected' : ''}>📂 Semua Topik (${baseList.length} kata)</option>
+            ${topics
+              .map((t) => {
+                const cnt = baseList.filter((x) => x.topic === t).length;
+                return `<option value="${escapeHtml(t)}" ${selectedTopic === t ? 'selected' : ''}>${escapeHtml(t)} (${cnt})</option>`;
+              })
+              .join('')}
+          </select>
+
+          ${
+            mode === 'cards'
+              ? `
+            <input id="lg-search" class="text-input lang-search-input" type="search" value="${escapeHtml(searchQuery)}" placeholder="Cari kata Indo, Inggris, Jepang, Romaji, atau Pinyin..." autocomplete="off" />
+            <div class="lang-scope-toggle">
+              <button id="lg-scope-grade" class="filter-chip ${cardsScope === 'grade' ? 'active' : ''}">Jenjang ${grade} (${(LANG_VOCAB[grade] || []).length})</button>
+              <button id="lg-scope-all" class="filter-chip ${cardsScope === 'all' ? 'active' : ''}">Semua (${allConcepts.length} Konsep)</button>
+            </div>
+          `
+              : ''
+          }
+        </div>
+      `
+          : ''
+      }
     `;
   }
 
   function renderSpeakingBody() {
-    const list = getVocabList();
-    const item = list[idx % list.length];
+    const list = getActiveVocabList();
+    const wordPos = idx % list.length;
+    const item = list[wordPos];
     const data = item[lang];
     const meta = LANG_META[lang];
-    const readingText = lang === 'en' ? data.phonetic : lang === 'ja' ? `${data.reading} (${data.romaji})` : data.pinyin;
+    const readingText =
+      lang === 'en'
+        ? (data.phonetic ? data.phonetic : `Level ${data.level} • ${item.topic}`)
+        : lang === 'ja'
+          ? `${data.reading} (${data.romaji})`
+          : data.pinyin;
     const toneBadges =
       lang === 'zh' && data.tones
         ? `<div class="tone-row">${data.tones.map((t) => `<span class="tone-badge">${TONE_LABELS[t] || ''}</span>`).join('')}</div>`
@@ -143,6 +310,15 @@ export function mountLanguageArena(container, ctx) {
 
     return `
       <div class="lang-panel">
+        <div class="lang-nav-row">
+          <span class="subject-badge">📂 ${item.topic} • Kata ${wordPos + 1} / ${list.length}</span>
+          <div style="display:flex;gap:0.45rem;flex-wrap:wrap;">
+            <button id="btn-prev-word" class="btn btn-secondary btn-sm">← Sebelumnya</button>
+            <button id="btn-rand-word" class="btn btn-amber btn-sm">🎲 Acak Kata</button>
+            <button id="btn-next-word" class="btn btn-secondary btn-sm">Berikutnya →</button>
+          </div>
+        </div>
+
         <div class="lang-card-hero">
           <span class="lang-emoji-big">${item.emoji}</span>
           <div class="lang-word-main">${data.text}</div>
@@ -169,7 +345,6 @@ export function mountLanguageArena(container, ctx) {
           }
           <div style="margin-top:0.65rem;display:flex;justify-content:center;flex-wrap:wrap;gap:0.5rem;">
             <button id="btn-self-pass" class="btn btn-success btn-sm">✅ Sudah Bisa Mengucapkan</button>
-            <button id="btn-next-word" class="btn btn-secondary btn-sm">Kata Berikutnya →</button>
           </div>
         </div>
 
@@ -187,19 +362,34 @@ export function mountLanguageArena(container, ctx) {
   }
 
   function renderWritingBody() {
-    const list = getVocabList();
-    const item = list[idx % list.length];
+    const list = getActiveVocabList();
+    const wordPos = idx % list.length;
+    const item = list[wordPos];
     const data = item[lang];
     const isCharacterLang = lang === 'ja' || lang === 'zh';
-    const readingText = lang === 'en' ? data.phonetic : lang === 'ja' ? `${data.reading} (${data.romaji})` : data.pinyin;
+    const readingText =
+      lang === 'en'
+        ? (data.phonetic || `Level ${data.level}`)
+        : lang === 'ja'
+          ? `${data.reading} (${data.romaji})`
+          : data.pinyin;
 
     if (!isCharacterLang) {
       return `
         <div class="lang-panel">
+          <div class="lang-nav-row">
+            <span class="subject-badge">📂 ${item.topic} • Kata ${wordPos + 1} / ${list.length}</span>
+            <div style="display:flex;gap:0.45rem;flex-wrap:wrap;">
+              <button id="btn-prev-word" class="btn btn-secondary btn-sm">← Sebelumnya</button>
+              <button id="btn-rand-word" class="btn btn-amber btn-sm">🎲 Acak</button>
+              <button id="btn-next-word" class="btn btn-secondary btn-sm">Berikutnya →</button>
+            </div>
+          </div>
+
           <div class="lang-card-hero">
             <span class="lang-emoji-big">${item.emoji}</span>
             <div class="lang-meaning" style="font-size:1.15rem;">Tulis dalam Bahasa Inggris: <strong>"${item.id}"</strong></div>
-            ${showGuide ? `<div class="lang-reading">Petunjuk: ${data.text[0]}${'_'.repeat(Math.max(1, data.text.length - 1))} (${data.text.length} huruf) • ${data.phonetic}</div>` : ''}
+            ${showGuide ? `<div class="lang-reading">Petunjuk: ${data.text[0]}${'_'.repeat(Math.max(1, data.text.length - 1))} (${data.text.length} huruf) • ${data.level}</div>` : ''}
             <div style="margin-top:0.8rem;">
               <button id="btn-speak-normal" class="btn btn-primary btn-sm">🔊 Dengarkan Pengucapan</button>
             </div>
@@ -215,19 +405,29 @@ export function mountLanguageArena(container, ctx) {
               ? `<div class="explanation-box" style="margin-top:1rem;border-color:${writeFeedback.ok ? '#22c55e' : '#ef4444'};"><p>${writeFeedback.msg}</p></div>`
               : ''
           }
-
-          <div style="text-align:center;margin-top:1rem;">
-            <button id="btn-next-word" class="btn btn-secondary btn-sm">Kata Berikutnya →</button>
-          </div>
         </div>
       `;
     }
 
+    const strokeLabel =
+      typeof data.strokes === 'number' && data.strokes > 0
+        ? `${data.strokes} Guratan`
+        : `${data.text.length} Aksara • ${data.level}`;
+
     return `
       <div class="lang-panel">
+        <div class="lang-nav-row">
+          <span class="subject-badge">📂 ${item.topic} • Kata ${wordPos + 1} / ${list.length}</span>
+          <div style="display:flex;gap:0.45rem;flex-wrap:wrap;">
+            <button id="btn-prev-word" class="btn btn-secondary btn-sm">← Sebelumnya</button>
+            <button id="btn-rand-word" class="btn btn-amber btn-sm">🎲 Acak</button>
+            <button id="btn-next-word" class="btn btn-secondary btn-sm">Berikutnya →</button>
+          </div>
+        </div>
+
         <div class="write-top-info">
           <div>
-            <span class="subject-badge">${item.emoji} ${item.id} • ${data.strokes || 4} Guratan</span>
+            <span class="subject-badge">${item.emoji} ${item.id} • ${strokeLabel}</span>
             <h3 style="font-family:var(--font-display);font-size:1.45rem;margin-top:0.35rem;">
               Tulis Aksara: <span style="color:var(--primary);">${data.text}</span>
               ${showGuide ? `<small style="font-size:0.9rem;color:var(--text-muted);margin-left:0.4rem;">(${readingText})</small>` : ''}
@@ -245,7 +445,6 @@ export function mountLanguageArena(container, ctx) {
             <div class="tracing-btn-col">
               <button id="btn-trace-check" class="btn btn-success">✅ Selesai & Cek Tulisan</button>
               <button id="btn-trace-clear" class="btn btn-secondary">🧹 Bersihkan Kanvas</button>
-              <button id="btn-next-word" class="btn btn-primary">Aksara Berikutnya →</button>
             </div>
           </div>
         </div>
@@ -259,15 +458,101 @@ export function mountLanguageArena(container, ctx) {
     `;
   }
 
+  function renderQuizBody() {
+    if (quizQuestions.length === 0) {
+      buildVocabQuiz();
+    }
+    const meta = LANG_META[lang];
+
+    if (quizFinished) {
+      return `
+        <div class="result-screen" style="padding:1rem 0.5rem;">
+          <div class="result-trophy">${quizCorrect >= quizQuestions.length * 0.8 ? '🏆' : '🌟'}</div>
+          <h2>Kuis Kosakata Selesai!</h2>
+          <p class="result-subtitle">${meta.name} • Jenjang ${grade} (${selectedTopic})</p>
+          <div class="result-stats">
+            <div class="result-stat-box"><strong>${quizCorrect}/${quizQuestions.length}</strong><span>Benar</span></div>
+            <div class="result-stat-box"><strong>${quizMaxStreak}x</strong><span>Combo Terbaik</span></div>
+            <div class="result-stat-box"><strong>${score}</strong><span>Total Skor Arena</span></div>
+          </div>
+          <div class="result-actions">
+            <button id="btn-quiz-replay" class="btn btn-primary">Main Kuis Lagi 🔄</button>
+            <button id="btn-quiz-cards" class="btn btn-secondary">Buka Kamus 3 Bahasa 🎴</button>
+          </div>
+        </div>
+      `;
+    }
+
+    const q = quizQuestions[quizIdx];
+    const keys = ['A', 'B', 'C', 'D'];
+
+    return `
+      <div class="lang-panel">
+        <div class="quiz-header-meta">
+          <span class="subject-badge">⚡ Soal ${quizIdx + 1}/${quizQuestions.length} • ${q.topic}</span>
+          <div style="display:flex;gap:0.5rem;align-items:center;">
+            <span class="hud-pill streak">🔥 ${quizStreak}x</span>
+            <button id="btn-quiz-speak" class="btn btn-primary btn-sm">🔊 Dengarkan</button>
+          </div>
+        </div>
+
+        <div class="quiz-question-box">
+          ${escapeHtml(q.prompt)}
+          ${q.hintLine ? `<div style="font-size:0.95rem;color:var(--primary);margin-top:0.35rem;">${escapeHtml(q.hintLine)}</div>` : ''}
+        </div>
+
+        <div class="options-grid">
+          ${q.options
+            .map((opt, i) => {
+              let cls = 'option-btn';
+              if (quizAnswered) {
+                if (i === q.answer) cls += ' correct';
+                else if (i === quizSelectedIdx) cls += ' wrong';
+              }
+              return `
+                <button class="${cls}" data-idx="${i}" ${quizAnswered ? 'disabled' : ''}>
+                  <span class="option-key">${keys[i]}</span>
+                  <span>${escapeHtml(opt)}</span>
+                </button>
+              `;
+            })
+            .join('')}
+        </div>
+
+        ${
+          quizAnswered
+            ? `
+          <div class="explanation-box">
+            <p><strong>${quizSelectedIdx === q.answer ? '✨ Tepat!' : '💡 Hampir Tepat!'}</strong> ${escapeHtml(q.exp)}</p>
+            <button id="btn-quiz-next" class="btn btn-primary btn-sm">
+              ${quizIdx >= quizQuestions.length - 1 ? 'Lihat Hasil Kuis 🏆' : 'Soal Berikutnya →'}
+            </button>
+          </div>
+        `
+            : ''
+        }
+      </div>
+    `;
+  }
+
   function renderDialogBody() {
     const dialogs = getDialogList();
-    const dlg = dialogs[idx % dialogs.length];
+    const dlgPos = idx % dialogs.length;
+    const dlg = dialogs[dlgPos];
     if (!currentDialogOpts) {
       currentDialogOpts = shuffleArray(dlg.options);
     }
 
     return `
       <div class="lang-panel">
+        <div class="lang-nav-row">
+          <span class="subject-badge">💬 Dialog ${dlgPos + 1} / ${dialogs.length}</span>
+          <div style="display:flex;gap:0.45rem;">
+            <button id="btn-prev-word" class="btn btn-secondary btn-sm">← Sebelumnya</button>
+            <button id="btn-next-word" class="btn btn-secondary btn-sm">Berikutnya →</button>
+          </div>
+        </div>
+
         <div class="npc-stage">
           <div class="npc-header">
             <span class="npc-name">${dlg.npc}</span>
@@ -298,7 +583,7 @@ export function mountLanguageArena(container, ctx) {
             ? `
           <div class="explanation-box" style="margin-top:1.1rem;border-color:${dialogFeedback.ok ? '#22c55e' : '#ef4444'};">
             <p><strong>${dialogFeedback.ok ? '🎉 Balasan Tepat!' : '💡 Coba Lagi!'}</strong> ${dialogFeedback.reply}</p>
-            <button id="btn-next-word" class="btn btn-primary btn-sm">Dialog Berikutnya →</button>
+            <button id="btn-next-word-exp" class="btn btn-primary btn-sm">Dialog Berikutnya →</button>
           </div>
         `
             : ''
@@ -307,24 +592,39 @@ export function mountLanguageArena(container, ctx) {
     `;
   }
 
-  function renderCardsBody() {
-    const list = getVocabList();
+  function renderCardsResultsHtml() {
+    const filtered = getFilteredCards();
+    const totalPages = Math.max(1, Math.ceil(filtered.length / CARDS_PER_PAGE));
+    if (page >= totalPages) page = totalPages - 1;
+    if (page < 0) page = 0;
+
+    const start = page * CARDS_PER_PAGE;
+    const slice = filtered.slice(start, start + CARDS_PER_PAGE);
+
     return `
-      <div class="lang-panel">
-        <p style="font-weight:700;color:var(--text-secondary);margin-bottom:1rem;">
-          Bandingkan 3 bahasa sekaligus untuk setiap kata! Klik tombol 🔊 untuk mendengar pelafalan native.
-        </p>
+      <div class="lang-cards-meta">
+        <span>Menampilkan <strong>${filtered.length}</strong> konsep (<strong>${(filtered.length * 3).toLocaleString('id-ID')}</strong> kata 3 bahasa)</span>
+        <span>Halaman ${page + 1} / ${totalPages}</span>
+      </div>
+
+      ${
+        slice.length === 0
+          ? `<div class="explanation-box"><p>Tidak ada kosakata yang cocok dengan pencarian "<strong>${escapeHtml(searchQuery)}</strong>". Coba kata kunci lain atau pilih "Semua Topik".</p></div>`
+          : `
         <div class="tri-cards-grid">
-          ${list
+          ${slice
             .map(
               (item) => `
             <div class="tri-card">
               <div class="tri-card-head">
                 <span class="tri-emoji">${item.emoji}</span>
-                <strong>${item.id}</strong>
+                <div>
+                  <strong>${item.id}</strong>
+                  <small style="display:block;font-size:0.72rem;color:#64748b;font-weight:700;">${item.topic}</small>
+                </div>
               </div>
               <div class="tri-row">
-                <span>🇬🇧 <strong>${item.en.text}</strong> ${showGuide ? `<small>${item.en.phonetic}</small>` : ''}</span>
+                <span>🇬🇧 <strong>${item.en.text}</strong> <small>${item.en.level}</small></span>
                 <button class="mini-speak-btn" data-txt="${encodeURIComponent(item.en.text)}" data-sl="en-US">🔊</button>
               </div>
               <div class="tri-row">
@@ -340,11 +640,67 @@ export function mountLanguageArena(container, ctx) {
             )
             .join('')}
         </div>
+      `
+      }
+
+      ${
+        totalPages > 1
+          ? `
+        <div class="lang-pagination">
+          <button id="btn-page-prev" class="btn btn-secondary btn-sm" ${page === 0 ? 'disabled' : ''}>← Hal Sebelumnya</button>
+          <span class="hud-pill">Halaman ${page + 1} / ${totalPages}</span>
+          <button id="btn-page-next" class="btn btn-primary btn-sm" ${page >= totalPages - 1 ? 'disabled' : ''}>Hal Berikutnya →</button>
+        </div>
+      `
+          : ''
+      }
+    `;
+  }
+
+  function renderCardsBody() {
+    return `
+      <div class="lang-panel">
+        <div id="cards-results-wrap">
+          ${renderCardsResultsHtml()}
+        </div>
       </div>
     `;
   }
 
-  function setupTracingCanvas(charText, wordIndex) {
+  function bindCardsInteractiveEvents() {
+    const wrap = container.querySelector('#cards-results-wrap');
+    if (!wrap) return;
+
+    wrap.querySelectorAll('.mini-speak-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        speakNative(decodeURIComponent(btn.dataset.txt), btn.dataset.sl, 0.92);
+      });
+    });
+
+    const prevPg = wrap.querySelector('#btn-page-prev');
+    if (prevPg) {
+      prevPg.addEventListener('click', () => {
+        if (page > 0) {
+          sfx.click();
+          page--;
+          wrap.innerHTML = renderCardsResultsHtml();
+          bindCardsInteractiveEvents();
+        }
+      });
+    }
+
+    const nextPg = wrap.querySelector('#btn-page-next');
+    if (nextPg) {
+      nextPg.addEventListener('click', () => {
+        sfx.click();
+        page++;
+        wrap.innerHTML = renderCardsResultsHtml();
+        bindCardsInteractiveEvents();
+      });
+    }
+  }
+
+  function setupTracingCanvas(charText, conceptKey) {
     const canvas = container.querySelector('#trace-canvas');
     if (!canvas) return;
     const g = canvas.getContext('2d');
@@ -367,7 +723,7 @@ export function mountLanguageArena(container, ctx) {
       if (showGuide) {
         g.save();
         g.fillStyle = 'rgba(148, 163, 184, 0.28)';
-        const fontSize = charText.length > 2 ? 92 : charText.length === 2 ? 128 : 205;
+        const fontSize = charText.length > 4 ? 54 : charText.length > 2 ? 84 : charText.length === 2 ? 124 : 200;
         g.font = `700 ${fontSize}px sans-serif`;
         g.textAlign = 'center';
         g.textBaseline = 'middle';
@@ -443,7 +799,7 @@ export function mountLanguageArena(container, ctx) {
           render();
           return;
         }
-        const earned = tryAwardPoints(`writing_${lang}_${wordIndex}`, 35);
+        const earned = tryAwardPoints(`writing_${lang}_${conceptKey}`, 35);
         writeFeedback = {
           ok: true,
           msg: earned
@@ -464,9 +820,11 @@ export function mountLanguageArena(container, ctx) {
         ? renderSpeakingBody()
         : mode === 'writing'
           ? renderWritingBody()
-          : mode === 'dialog'
-            ? renderDialogBody()
-            : renderCardsBody();
+          : mode === 'quiz'
+            ? renderQuizBody()
+            : mode === 'dialog'
+              ? renderDialogBody()
+              : renderCardsBody();
 
     container.innerHTML = `
       <div class="game-shell">
@@ -488,6 +846,9 @@ export function mountLanguageArena(container, ctx) {
     container.querySelector('#lg-toggle-guide').addEventListener('click', () => {
       sfx.click();
       showGuide = !showGuide;
+      if (mode === 'quiz' && !quizAnswered && !quizFinished) {
+        buildVocabQuiz();
+      }
       render();
     });
 
@@ -498,23 +859,84 @@ export function mountLanguageArena(container, ctx) {
         lang = btn.dataset.lang;
         idx = 0;
         resetRoundFeedback();
+        if (mode === 'quiz') buildVocabQuiz();
         render();
       });
     });
 
-    container.querySelectorAll('.filter-chip').forEach((chip) => {
+    container.querySelectorAll('.filter-chip[data-mode]').forEach((chip) => {
       chip.addEventListener('click', () => {
         sfx.click();
         stopAudioAndMic();
         mode = chip.dataset.mode;
+        if (mode !== 'cards' && cardsScope === 'all') {
+          cardsScope = 'grade';
+          selectedTopic = 'Semua';
+        }
+        idx = 0;
+        page = 0;
         resetRoundFeedback();
+        if (mode === 'quiz') buildVocabQuiz();
         render();
       });
     });
 
-    const list = getVocabList();
-    const wordIdx = idx % list.length;
-    const item = list[wordIdx];
+    const topicSel = container.querySelector('#lg-topic');
+    if (topicSel) {
+      topicSel.addEventListener('change', () => {
+        sfx.click();
+        stopAudioAndMic();
+        selectedTopic = topicSel.value;
+        idx = 0;
+        page = 0;
+        resetRoundFeedback();
+        if (mode === 'quiz') buildVocabQuiz();
+        render();
+      });
+    }
+
+    // Cards search & scope bindings
+    const searchInput = container.querySelector('#lg-search');
+    if (searchInput) {
+      searchInput.addEventListener('input', () => {
+        searchQuery = searchInput.value;
+        page = 0;
+        const wrap = container.querySelector('#cards-results-wrap');
+        if (wrap) {
+          wrap.innerHTML = renderCardsResultsHtml();
+          bindCardsInteractiveEvents();
+        }
+      });
+    }
+
+    const scopeGradeBtn = container.querySelector('#lg-scope-grade');
+    if (scopeGradeBtn) {
+      scopeGradeBtn.addEventListener('click', () => {
+        if (cardsScope === 'grade') return;
+        sfx.click();
+        cardsScope = 'grade';
+        selectedTopic = 'Semua';
+        page = 0;
+        render();
+      });
+    }
+
+    const scopeAllBtn = container.querySelector('#lg-scope-all');
+    if (scopeAllBtn) {
+      scopeAllBtn.addEventListener('click', () => {
+        if (cardsScope === 'all') return;
+        sfx.click();
+        cardsScope = 'all';
+        selectedTopic = 'Semua';
+        page = 0;
+        render();
+      });
+    }
+
+    // Word / Dialog Navigation
+    const list = getActiveVocabList();
+    const wordPos = idx % list.length;
+    const item = list[wordPos];
     const data = item[lang];
     const meta = LANG_META[lang];
 
@@ -533,12 +955,42 @@ export function mountLanguageArena(container, ctx) {
       speakEx.addEventListener('click', () => speakNative(data.example.split('(')[0], meta.speechLang, 0.9));
     }
 
+    const goNext = () => {
+      sfx.click();
+      stopAudioAndMic();
+      idx++;
+      resetRoundFeedback();
+      render();
+    };
+
+    const goPrev = () => {
+      sfx.click();
+      stopAudioAndMic();
+      const len = mode === 'dialog' ? getDialogList().length : list.length;
+      idx = (idx - 1 + len) % len;
+      resetRoundFeedback();
+      render();
+    };
+
     const nextBtn = container.querySelector('#btn-next-word');
-    if (nextBtn) {
-      nextBtn.addEventListener('click', () => {
+    if (nextBtn) nextBtn.addEventListener('click', goNext);
+
+    const nextExpBtn = container.querySelector('#btn-next-word-exp');
+    if (nextExpBtn) nextExpBtn.addEventListener('click', goNext);
+
+    const prevBtn = container.querySelector('#btn-prev-word');
+    if (prevBtn) prevBtn.addEventListener('click', goPrev);
+
+    const randBtn = container.querySelector('#btn-rand-word');
+    if (randBtn) {
+      randBtn.addEventListener('click', () => {
         sfx.click();
         stopAudioAndMic();
-        idx++;
+        if (list.length > 1) {
+          let nextIdx = Math.floor(Math.random() * list.length);
+          if (nextIdx === wordPos) nextIdx = (wordPos + 1) % list.length;
+          idx = nextIdx;
+        }
         resetRoundFeedback();
         render();
       });
@@ -547,7 +999,7 @@ export function mountLanguageArena(container, ctx) {
     const selfPass = container.querySelector('#btn-self-pass');
     if (selfPass) {
       selfPass.addEventListener('click', () => {
-        const earned = tryAwardPoints(`speaking_${lang}_${wordIdx}`, 25);
+        const earned = tryAwardPoints(`speaking_${lang}_${item.concept_id}`, 25);
         speakFeedback = {
           ok: true,
           msg: earned
@@ -579,7 +1031,7 @@ export function mountLanguageArena(container, ctx) {
             const res = evaluateSpeech(alts, targets);
             const safeHeard = escapeHtml(res.heard);
             if (res.score >= 60) {
-              const earned = tryAwardPoints(`speaking_${lang}_${wordIdx}`, 40);
+              const earned = tryAwardPoints(`speaking_${lang}_${item.concept_id}`, 40);
               speakFeedback = {
                 ok: true,
                 msg: earned
@@ -619,7 +1071,7 @@ export function mountLanguageArena(container, ctx) {
         const val = container.querySelector('#en-write-input').value.trim();
         const target = data.text.toLowerCase();
         if (val.toLowerCase() === target) {
-          const earned = tryAwardPoints(`writing_en_${wordIdx}`, 35);
+          const earned = tryAwardPoints(`writing_en_${item.concept_id}`, 35);
           writeFeedback = {
             ok: true,
             msg: earned
@@ -638,9 +1090,75 @@ export function mountLanguageArena(container, ctx) {
     }
 
     if (mode === 'writing' && (lang === 'ja' || lang === 'zh')) {
-      setupTracingCanvas(data.text, wordIdx);
+      setupTracingCanvas(data.text, item.concept_id);
     }
 
+    // Quiz Mode Events
+    if (mode === 'quiz') {
+      const qSpeak = container.querySelector('#btn-quiz-speak');
+      if (qSpeak && quizQuestions[quizIdx]) {
+        qSpeak.addEventListener('click', () => speakNative(quizQuestions[quizIdx].speakText, meta.speechLang, 0.92));
+      }
+
+      container.querySelectorAll('.option-btn[data-idx]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          if (quizAnswered || quizFinished) return;
+          quizAnswered = true;
+          quizSelectedIdx = Number(btn.dataset.idx);
+          const curQ = quizQuestions[quizIdx];
+          if (quizSelectedIdx === curQ.answer) {
+            quizCorrect++;
+            quizStreak++;
+            quizMaxStreak = Math.max(quizMaxStreak, quizStreak);
+            const rect = btn.getBoundingClientRect();
+            tryAwardPoints(`quiz_${lang}_${curQ.concept_id}`, 30, rect.left + rect.width / 2, rect.top + rect.height / 2);
+          } else {
+            quizStreak = 0;
+            sfx.wrong();
+          }
+          render();
+        });
+      });
+
+      const qNext = container.querySelector('#btn-quiz-next');
+      if (qNext) {
+        qNext.addEventListener('click', () => {
+          sfx.click();
+          if (quizIdx >= quizQuestions.length - 1) {
+            quizFinished = true;
+            if (quizCorrect >= Math.ceil(quizQuestions.length * 0.6)) {
+              sfx.fanfare();
+              fx.confetti();
+            }
+          } else {
+            quizIdx++;
+            quizAnswered = false;
+            quizSelectedIdx = null;
+          }
+          render();
+        });
+      }
+
+      const qReplay = container.querySelector('#btn-quiz-replay');
+      if (qReplay) {
+        qReplay.addEventListener('click', () => {
+          sfx.click();
+          buildVocabQuiz();
+          render();
+        });
+      }
+
+      const qCards = container.querySelector('#btn-quiz-cards');
+      if (qCards) {
+        qCards.addEventListener('click', () => {
+          sfx.click();
+          mode = 'cards';
+          render();
+        });
+      }
+    }
+
+    // Dialog NPC Events
     const npcSpeak = container.querySelector('#btn-npc-speak');
     if (npcSpeak) {
       const dlg = getDialogList()[idx % getDialogList().length];
@@ -666,11 +1184,9 @@ export function mountLanguageArena(container, ctx) {
       });
     });
 
-    container.querySelectorAll('.mini-speak-btn').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        speakNative(decodeURIComponent(btn.dataset.txt), btn.dataset.sl, 0.92);
-      });
-    });
+    if (mode === 'cards') {
+      bindCardsInteractiveEvents();
+    }
   }
 
   render();
