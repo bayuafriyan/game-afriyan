@@ -827,8 +827,8 @@
 @media (max-width: 680px) {
   .options-grid,
   .sort-portals { grid-template-columns: 1fr; }
-  .memory-grid.cols-4 { grid-template-columns: repeat(3, 1fr); }
-  .memory-grid.cols-5 { grid-template-columns: repeat(4, 1fr); }
+  .memory-grid.cols-4 { grid-template-columns: repeat(4, 1fr); gap: 0.5rem; }
+  .memory-grid.cols-5 { grid-template-columns: repeat(4, 1fr); gap: 0.5rem; }
   .meteor-canvas-wrap { height: 350px; }
 }
 
@@ -987,14 +987,15 @@
 
 .tracing-stage {
   display: grid;
-  grid-template-columns: 326px 1fr;
+  grid-template-columns: minmax(0, 326px) 1fr;
   gap: 1.4rem;
   align-items: center;
 }
 
 .tracing-canvas-wrap {
-  width: 326px;
-  height: 326px;
+  width: min(320px, 100%);
+  aspect-ratio: 1 / 1;
+  height: auto;
   border-radius: 22px;
   border: 3px solid #94a3b8;
   background: #ffffff;
@@ -1003,7 +1004,12 @@
   touch-action: none;
 }
 
-#trace-canvas { display: block; cursor: crosshair; }
+#trace-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: crosshair;
+}
 
 .tracing-tip {
   font-weight: 700;
@@ -1021,9 +1027,15 @@
 
 .en-write-box {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.65rem;
   max-width: 520px;
   margin: 0 auto;
+}
+
+.en-write-box .text-input {
+  flex: 1;
+  min-width: 180px;
 }
 
 /* NPC Dialogue Mode */
@@ -1082,16 +1094,29 @@
   transition: transform 0.12s, border-color 0.14s;
 }
 
-.dialog-opt-btn:hover {
+.dialog-opt-btn:hover:not(:disabled) {
   border-color: var(--primary);
   background: #f0f9ff;
   transform: translateY(-2px);
 }
 
+.dialog-opt-btn:disabled {
+  cursor: default;
+  opacity: 0.8;
+}
+
+.dialog-opt-btn.correct {
+  border-color: #16a34a;
+  background: #dcfce7;
+  color: #14532d;
+  box-shadow: 0 5px 0 #15803d;
+  opacity: 1;
+}
+
 /* Tri-Language Flashcards */
 .tri-cards-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: 0.95rem;
 }
 

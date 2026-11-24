@@ -589,7 +589,7 @@ body::before {
    ===================================================== */
 .games-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
   gap: 1.25rem;
 }
 
@@ -1110,6 +1110,51 @@ body::before {
 
 .anim-shake { animation: shake 0.36s ease; }
 .hidden { display: none !important; }
+
+/* Lobby Footer & Info Cards */
+.lobby-footer {
+  margin-top: 2.2rem;
+  padding: 1rem 1.25rem;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.78);
+  border: 2px solid var(--card-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  font-size: 0.84rem;
+  color: var(--text-secondary);
+  font-weight: 700;
+}
+
+.info-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.info-card {
+  padding: 0.9rem 1rem;
+  border-radius: 16px;
+  background: #f8fafc;
+  border: 2px solid #e2e8f0;
+}
+
+.info-card strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 0.98rem;
+  color: #0f172a;
+  margin-bottom: 0.25rem;
+}
+
+.info-card p {
+  font-size: 0.86rem;
+  color: #475569;
+  line-height: 1.48;
+  font-weight: 600;
+}
 
 @media (max-width: 860px) {
   .topbar { flex-wrap: wrap; padding: 0.65rem 1rem; }

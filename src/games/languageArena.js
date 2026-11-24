@@ -3,7 +3,7 @@
 
 import { LANG_META, LANG_VOCAB, LANG_DIALOGUES } from '../data/languageData.js';
 import { speakNative, startListening, isSpeechRecognitionSupported, evaluateSpeech } from '../utils/speech.js';
-import { shuffleArray } from '../utils/quizHelper.js';
+import { shuffleArray, escapeHtml } from '../utils/quizHelper.js';
 import { sfx } from '../utils/audio.js';
 import { fx } from '../utils/particles.js';
 
@@ -30,6 +30,21 @@ export function mountLanguageArena(container, ctx) {
   let writeFeedback = null;
   let strokeCountDrawn = 0;
 
+  let unmounted = false;
+  let traceCleanup = null;
+  let currentDialogOpts = null;
+  let dialogSolved = false;
+  let selectedDialogOptIdx = null;
+  let sessionCounted = false;
+  const rewardedKeys = new Set();
+
+  function cleanupTrace() {
+    if (traceCleanup) {
+      traceCleanup();
+      traceCleanup = null;
+    }
+  }
+
   function stopAudioAndMic() {
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
     if (activeRec) {
@@ -47,7 +62,13 @@ export function mountLanguageArena(container, ctx) {
     return (LANG_DIALOGUES[lang] && LANG_DIALOGUES[lang][grade]) || LANG_DIALOGUES[lang].SD;
   }
 
-  function awardPoints(pts, x = window.innerWidth / 2, y = window.innerHeight * 0.45) {
+  function tryAwardPoints(rewardKey, pts, x = window.innerWidth / 2, y = window.innerHeight * 0.45) {
+    if (rewardedKeys.has(rewardKey)) {
+      sfx.correct(1);
+      fx.burst(x, y, 16);
+      return false;
+    }
+    rewardedKeys.add(rewardKey);
     score += pts;
     completed++;
     sfx.correct(Math.min(completed, 6));
@@ -59,7 +80,19 @@ export function mountLanguageArena(container, ctx) {
       correctCount: 1,
       maxStreak: completed,
       xpEarned: Math.max(15, Math.round(pts * 0.6)),
+      isStep: sessionCounted,
     });
+    sessionCounted = true;
+    return true;
+  }
+
+  function resetRoundFeedback() {
+    speakFeedback = null;
+    dialogFeedback = null;
+    writeFeedback = null;
+    currentDialogOpts = null;
+    dialogSolved = false;
+    selectedDialogOptIdx = null;
   }
 
   function renderHeader() {
@@ -71,7 +104,7 @@ export function mountLanguageArena(container, ctx) {
           <span class="hud-pill">${meta.flag} ${meta.name} (${meta.levelLabel[grade]})</span>
         </div>
         <div class="hud-group">
-          <button id="lg-toggle-guide" class="lifeline-btn">${showGuide ? '👁️ Bantuan: ON' : '🙈 Mode Sulit: OFF'}</button>
+          <button id="lg-toggle-guide" class="lifeline-btn">${showGuide ? '👁️ Bantuan: ON' : '🙈 Bantuan: OFF'}</button>
           <span class="hud-pill score">⭐ ${score}</span>
         </div>
       </div>
@@ -134,7 +167,7 @@ export function mountLanguageArena(container, ctx) {
               ? `<p class="mic-note">Browser ini tidak mendukung mikrofon otomatis. Kamu tetap bisa latihan menirukan audio di atas!</p>`
               : `<p class="mic-note">Ucapkan <strong>"${data.text}"</strong> (${meta.speechLang}) dengan jelas ke mikrofon.</p>`
           }
-          <div style="margin-top:0.65rem;">
+          <div style="margin-top:0.65rem;display:flex;justify-content:center;flex-wrap:wrap;gap:0.5rem;">
             <button id="btn-self-pass" class="btn btn-success btn-sm">✅ Sudah Bisa Mengucapkan</button>
             <button id="btn-next-word" class="btn btn-secondary btn-sm">Kata Berikutnya →</button>
           </div>
@@ -161,7 +194,6 @@ export function mountLanguageArena(container, ctx) {
     const readingText = lang === 'en' ? data.phonetic : lang === 'ja' ? `${data.reading} (${data.romaji})` : data.pinyin;
 
     if (!isCharacterLang) {
-      // English Spelling & Writing Mode
       return `
         <div class="lang-panel">
           <div class="lang-card-hero">
@@ -191,7 +223,6 @@ export function mountLanguageArena(container, ctx) {
       `;
     }
 
-    // Japanese & Mandarin Interactive Calligraphy Tracing Canvas
     return `
       <div class="lang-panel">
         <div class="write-top-info">
@@ -231,7 +262,9 @@ export function mountLanguageArena(container, ctx) {
   function renderDialogBody() {
     const dialogs = getDialogList();
     const dlg = dialogs[idx % dialogs.length];
-    const opts = shuffleArray(dlg.options);
+    if (!currentDialogOpts) {
+      currentDialogOpts = shuffleArray(dlg.options);
+    }
 
     return `
       <div class="lang-panel">
@@ -248,10 +281,10 @@ export function mountLanguageArena(container, ctx) {
         </div>
 
         <div class="dialog-choices">
-          ${opts
+          ${currentDialogOpts
             .map(
               (o, i) => `
-            <button class="dialog-opt-btn" data-ok="${o.ok}" data-reply="${encodeURIComponent(o.reply)}">
+            <button class="dialog-opt-btn ${dialogSolved && selectedDialogOptIdx === i ? 'correct' : ''}" data-opt-idx="${i}" data-ok="${o.ok}" data-reply="${encodeURIComponent(o.reply)}" ${dialogSolved ? 'disabled' : ''}>
               <span class="option-key">${['A', 'B', 'C'][i]}</span>
               <span>${o.text}</span>
             </button>
@@ -311,7 +344,7 @@ export function mountLanguageArena(container, ctx) {
     `;
   }
 
-  function setupTracingCanvas(charText) {
+  function setupTracingCanvas(charText, wordIndex) {
     const canvas = container.querySelector('#trace-canvas');
     if (!canvas) return;
     const g = canvas.getContext('2d');
@@ -319,7 +352,6 @@ export function mountLanguageArena(container, ctx) {
 
     function drawGuideLayer() {
       g.clearRect(0, 0, canvas.width, canvas.height);
-      // Tianzige (田) practice grid
       g.save();
       g.strokeStyle = '#cbd5e1';
       g.lineWidth = 1.5;
@@ -389,6 +421,10 @@ export function mountLanguageArena(container, ctx) {
     canvas.addEventListener('touchmove', moveDraw, { passive: false });
     canvas.addEventListener('touchend', endDraw);
 
+    traceCleanup = () => {
+      window.removeEventListener('mouseup', endDraw);
+    };
+
     const clearBtn = container.querySelector('#btn-trace-clear');
     if (clearBtn) {
       clearBtn.addEventListener('click', () => {
@@ -407,14 +443,22 @@ export function mountLanguageArena(container, ctx) {
           render();
           return;
         }
-        writeFeedback = { ok: true, msg: `Keren! Kamu menulis "${charText}" dengan ${strokeCountDrawn} goresan. Terus berlatih agar makin rapi!` };
-        awardPoints(35);
+        const earned = tryAwardPoints(`writing_${lang}_${wordIndex}`, 35);
+        writeFeedback = {
+          ok: true,
+          msg: earned
+            ? `Keren! Kamu menulis "${charText}" dengan ${strokeCountDrawn} goresan (+35 poin).`
+            : `Mantap! Latihan tambahan "${charText}" tercatat (${strokeCountDrawn} goresan).`,
+        };
         render();
       });
     }
   }
 
   function render() {
+    if (unmounted) return;
+    cleanupTrace();
+
     const bodyHtml =
       mode === 'speaking'
         ? renderSpeakingBody()
@@ -433,10 +477,11 @@ export function mountLanguageArena(container, ctx) {
       </div>
     `;
 
-    // Bind Header & Tabs
     container.querySelector('#lg-back').addEventListener('click', () => {
       sfx.click();
+      unmounted = true;
       stopAudioAndMic();
+      cleanupTrace();
       onBack();
     });
 
@@ -452,9 +497,7 @@ export function mountLanguageArena(container, ctx) {
         stopAudioAndMic();
         lang = btn.dataset.lang;
         idx = 0;
-        speakFeedback = null;
-        dialogFeedback = null;
-        writeFeedback = null;
+        resetRoundFeedback();
         render();
       });
     });
@@ -464,16 +507,14 @@ export function mountLanguageArena(container, ctx) {
         sfx.click();
         stopAudioAndMic();
         mode = chip.dataset.mode;
-        speakFeedback = null;
-        dialogFeedback = null;
-        writeFeedback = null;
+        resetRoundFeedback();
         render();
       });
     });
 
-    // Bind Sub-mode Events
     const list = getVocabList();
-    const item = list[idx % list.length];
+    const wordIdx = idx % list.length;
+    const item = list[wordIdx];
     const data = item[lang];
     const meta = LANG_META[lang];
 
@@ -498,9 +539,7 @@ export function mountLanguageArena(container, ctx) {
         sfx.click();
         stopAudioAndMic();
         idx++;
-        speakFeedback = null;
-        dialogFeedback = null;
-        writeFeedback = null;
+        resetRoundFeedback();
         render();
       });
     }
@@ -508,8 +547,13 @@ export function mountLanguageArena(container, ctx) {
     const selfPass = container.querySelector('#btn-self-pass');
     if (selfPass) {
       selfPass.addEventListener('click', () => {
-        speakFeedback = { ok: true, msg: `Mantap! Pelafalan "${data.text}" selesai dilatih (+25 poin).` };
-        awardPoints(25);
+        const earned = tryAwardPoints(`speaking_${lang}_${wordIdx}`, 25);
+        speakFeedback = {
+          ok: true,
+          msg: earned
+            ? `Mantap! Pelafalan "${data.text}" selesai dilatih (+25 poin).`
+            : `Pelafalan "${data.text}" sudah dinilai di sesi ini. Lanjut ke kata berikutnya ya!`,
+        };
         render();
       });
     }
@@ -526,56 +570,77 @@ export function mountLanguageArena(container, ctx) {
         speakFeedback = null;
         render();
 
-        const targets = [data.text, data.reading, data.romaji, data.pinyin].filter(Boolean);
+        const readingTargets = data.reading ? data.reading.split('/').map((s) => s.trim()) : [];
+        const targets = [data.text, ...readingTargets, data.romaji, data.pinyin].filter(Boolean);
         activeRec = startListening(meta.speechLang, {
           onResult: (alts) => {
+            if (unmounted) return;
             isListening = false;
             const res = evaluateSpeech(alts, targets);
+            const safeHeard = escapeHtml(res.heard);
             if (res.score >= 60) {
-              speakFeedback = { ok: true, msg: `Hebat! Terdengar: "${res.heard}" (Kemiripan ${res.score}%). Pengucapanmu jelas!` };
-              awardPoints(40);
+              const earned = tryAwardPoints(`speaking_${lang}_${wordIdx}`, 40);
+              speakFeedback = {
+                ok: true,
+                msg: earned
+                  ? `Hebat! Terdengar: "${safeHeard}" (Kemiripan ${res.score}%). Pengucapanmu jelas!`
+                  : `Hebat! Terdengar: "${safeHeard}" (Kemiripan ${res.score}%). Tetap lancar!`,
+              };
             } else {
               sfx.wrong();
-              speakFeedback = { ok: false, msg: `Terdengar: "${res.heard}" (Kemiripan ${res.score}%). Coba dengarkan tombol 🐢 Pelan lalu ucapkan lagi ya!` };
+              speakFeedback = {
+                ok: false,
+                msg: `Terdengar: "${safeHeard}" (Kemiripan ${res.score}%). Coba dengarkan tombol 🐢 Pelan lalu ucapkan lagi ya!`,
+              };
             }
             render();
           },
           onError: (msg) => {
+            if (unmounted) return;
             isListening = false;
-            speakFeedback = { ok: false, msg };
+            speakFeedback = { ok: false, msg: escapeHtml(msg) };
             render();
           },
           onEnd: () => {
-            isListening = false;
+            if (unmounted) return;
+            if (isListening) {
+              isListening = false;
+              render();
+            }
           },
         });
       });
     }
 
-    // English Writing Form
     const enForm = container.querySelector('#en-write-form');
     if (enForm) {
       enForm.addEventListener('submit', (e) => {
         e.preventDefault();
-        const val = container.querySelector('#en-write-input').value.trim().toLowerCase();
+        const val = container.querySelector('#en-write-input').value.trim();
         const target = data.text.toLowerCase();
-        if (val === target) {
-          writeFeedback = { ok: true, msg: `Tepat sekali! Ejaan "${data.text}" benar 100%!` };
-          awardPoints(35);
+        if (val.toLowerCase() === target) {
+          const earned = tryAwardPoints(`writing_en_${wordIdx}`, 35);
+          writeFeedback = {
+            ok: true,
+            msg: earned
+              ? `Tepat sekali! Ejaan "${data.text}" benar 100%!`
+              : `Benar! Ejaan "${data.text}" tetap akurat!`,
+          };
         } else {
           sfx.wrong();
-          writeFeedback = { ok: false, msg: `Belum tepat ("${val || '...'}"). Coba dengarkan audionya lagi ya!` };
+          writeFeedback = {
+            ok: false,
+            msg: `Belum tepat ("${escapeHtml(val) || '...'}"). Coba dengarkan audionya lagi ya!`,
+          };
         }
         render();
       });
     }
 
-    // Japanese / Mandarin Canvas
     if (mode === 'writing' && (lang === 'ja' || lang === 'zh')) {
-      setupTracingCanvas(data.text);
+      setupTracingCanvas(data.text, wordIdx);
     }
 
-    // Dialog NPC Events
     const npcSpeak = container.querySelector('#btn-npc-speak');
     if (npcSpeak) {
       const dlg = getDialogList()[idx % getDialogList().length];
@@ -584,12 +649,16 @@ export function mountLanguageArena(container, ctx) {
 
     container.querySelectorAll('.dialog-opt-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
+        if (dialogSolved) return;
         const ok = btn.dataset.ok === 'true';
         const reply = decodeURIComponent(btn.dataset.reply);
         dialogFeedback = { ok, reply };
         if (ok) {
+          dialogSolved = true;
+          selectedDialogOptIdx = Number(btn.dataset.optIdx);
+          const dlgIdx = idx % getDialogList().length;
           const rect = btn.getBoundingClientRect();
-          awardPoints(40, rect.left + rect.width / 2, rect.top + rect.height / 2);
+          tryAwardPoints(`dialog_${lang}_${dlgIdx}`, 40, rect.left + rect.width / 2, rect.top + rect.height / 2);
         } else {
           sfx.wrong();
         }
@@ -597,7 +666,6 @@ export function mountLanguageArena(container, ctx) {
       });
     });
 
-    // Tri-language Card Audio
     container.querySelectorAll('.mini-speak-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
         speakNative(decodeURIComponent(btn.dataset.txt), btn.dataset.sl, 0.92);
@@ -606,5 +674,9 @@ export function mountLanguageArena(container, ctx) {
   }
 
   render();
-  return () => stopAudioAndMic();
+  return () => {
+    unmounted = true;
+    stopAudioAndMic();
+    cleanupTrace();
+  };
 }

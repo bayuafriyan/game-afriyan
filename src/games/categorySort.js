@@ -49,7 +49,7 @@ export function mountCategorySort(container, ctx) {
       streak++;
       maxStreak = Math.max(maxStreak, streak);
       score += 25 + streak * 6;
-      feedback = { ok: true, text: `✨ Benar! ${current.text} — ${current.note}` };
+      feedback = { ok: true, text: `✨ Benar! ${current.text} (${current.note})` };
       sfx.correct(streak);
       if (btnEl) {
         const rect = btnEl.getBoundingClientRect();

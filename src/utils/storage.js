@@ -10,7 +10,7 @@ export const BADGE_DEFS = [
   { id: 'xp_500', icon: '⚡', name: 'Bintang Belajar', desc: 'Kumpulkan total 500 XP' },
   { id: 'xp_2000', icon: '👑', name: 'Profesor Muda', desc: 'Kumpulkan total 2.000 XP' },
   { id: 'explorer', icon: '🧭', name: 'Penjelajah Arena', desc: 'Coba minimal 4 mini-game berbeda' },
-  { id: 'all_games', icon: '🏆', name: 'Master Makin Cerdas', desc: 'Mainkan semua mode game edukasi' },
+  { id: 'all_games', icon: '🏆', name: 'Master Makin Cerdas', desc: 'Mainkan semua 8 mode permainan' },
   { id: 'meteor_hero', icon: '☄️', name: 'Penjaga Galaksi', desc: 'Raih skor 150+ di Meteor Hitung' },
   { id: 'memory_pro', icon: '🧠', name: 'Memori Tajam', desc: 'Selesaikan Memori Pasangan' },
 ];
@@ -93,10 +93,12 @@ export function getLevelInfo(xp) {
   };
 }
 
-export function recordGameResult(profile, { gameId, grade, score, correctCount = 0, maxStreak = 0, xpEarned = 0 }) {
+export function recordGameResult(profile, { gameId, grade, score, correctCount = 0, maxStreak = 0, xpEarned = 0, isStep = false }) {
   const prevLevel = getLevelInfo(profile.xp).level;
   profile.xp += xpEarned;
-  profile.gamesPlayed += 1;
+  if (!isStep) {
+    profile.gamesPlayed += 1;
+  }
   profile.totalCorrect += correctCount;
   profile.bestStreak = Math.max(profile.bestStreak, maxStreak);
 
@@ -116,7 +118,9 @@ export function recordGameResult(profile, { gameId, grade, score, correctCount =
   }
   for (const q of profile.quests.items) {
     if (q.id === 'play_2') {
-      q.progress = Math.min(q.target, q.progress + 1);
+      if (!isStep) {
+        q.progress = Math.min(q.target, q.progress + 1);
+      }
     } else if (q.id === 'correct_10') {
       q.progress = Math.min(q.target, q.progress + correctCount);
     } else if (q.id === 'try_2_modes') {
@@ -141,7 +145,7 @@ export function recordGameResult(profile, { gameId, grade, score, correctCount =
   if (profile.xp >= 500) unlock('xp_500');
   if (profile.xp >= 2000) unlock('xp_2000');
   if (profile.playedModes.length >= 4) unlock('explorer');
-  if (profile.playedModes.length >= 6) unlock('all_games');
+  if (profile.playedModes.length >= 8) unlock('all_games');
   if (gameId === 'meteor' && score >= 150) unlock('meteor_hero');
   if (gameId === 'memory' && score > 0) unlock('memory_pro');
 

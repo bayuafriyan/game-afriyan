@@ -38,7 +38,14 @@ export function startListening(lang = 'en-US', { onResult, onError, onEnd }) {
   };
 
   recognition.onerror = (event) => {
-    if (onError) onError(event.error === 'not-allowed' ? 'Izin mikrofon ditolak. Aktifkan izin mikrofon di browser.' : `Gagal mendengar (${event.error}). Coba ucapkan lagi!`);
+    if (!onError) return;
+    if (event.error === 'not-allowed') {
+      onError('Izin mikrofon ditolak. Aktifkan izin mikrofon di browser.');
+    } else if (event.error === 'no-speech') {
+      onError('Suara belum terdengar. Coba bicara lebih dekat ke mikrofon ya!');
+    } else {
+      onError(`Gagal mendengar (${event.error}). Coba ucapkan lagi!`);
+    }
   };
 
   recognition.onend = () => {
@@ -79,10 +86,11 @@ export function evaluateSpeech(transcripts, targets) {
   let bestHeard = transcripts[0] || '';
   for (const heard of transcripts) {
     const hNorm = normalizeText(heard);
+    if (!hNorm) continue;
     for (const target of targets) {
       const tNorm = normalizeText(target);
       if (!tNorm) continue;
-      if (hNorm === tNorm || hNorm.includes(tNorm) || tNorm.includes(hNorm)) {
+      if (hNorm === tNorm || (tNorm.length >= 2 && hNorm.includes(tNorm))) {
         return { score: 100, heard };
       }
       const dist = levenshtein(hNorm, tNorm);

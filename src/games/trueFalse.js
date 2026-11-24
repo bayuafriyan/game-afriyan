@@ -14,7 +14,7 @@ function shuffle(arr) {
 
 export function mountTrueFalse(container, ctx) {
   const { grade, onFinish, onBack } = ctx;
-  const items = shuffle(TRUE_FALSE_BANK[grade] || TRUE_FALSE_BANK.SD);
+  let items = [];
   let idx = 0;
   let score = 0;
   let correctCount = 0;
@@ -24,6 +24,8 @@ export function mountTrueFalse(container, ctx) {
   let timeLeft = 12;
   const maxTime = 12;
   let answered = false;
+  let inResult = false;
+  let unmounted = false;
   let timerId = null;
 
   function stopTimer() {
@@ -33,6 +35,20 @@ export function mountTrueFalse(container, ctx) {
     }
   }
 
+  function startNewGame() {
+    stopTimer();
+    items = shuffle(TRUE_FALSE_BANK[grade] || TRUE_FALSE_BANK.SD);
+    idx = 0;
+    score = 0;
+    correctCount = 0;
+    streak = 0;
+    maxStreak = 0;
+    lives = 3;
+    answered = false;
+    inResult = false;
+    render();
+  }
+
   function startTimer() {
     stopTimer();
     timeLeft = maxTime;
@@ -40,7 +56,7 @@ export function mountTrueFalse(container, ctx) {
     const txt = container.querySelector('#tf-timer-txt');
 
     timerId = setInterval(() => {
-      if (answered) return;
+      if (answered || inResult || unmounted) return;
       timeLeft = Math.max(0, +(timeLeft - 0.1).toFixed(1));
       if (fill) {
         fill.style.width = `${(timeLeft / maxTime) * 100}%`;
@@ -55,7 +71,7 @@ export function mountTrueFalse(container, ctx) {
   }
 
   function answer(choiceBool) {
-    if (answered) return;
+    if (answered || inResult || unmounted) return;
     answered = true;
     stopTimer();
 
@@ -112,6 +128,7 @@ export function mountTrueFalse(container, ctx) {
   }
 
   function onKey(e) {
+    if (unmounted || inResult) return;
     if (answered) {
       if (e.key === 'Enter' || e.key === ' ') {
         const next = container.querySelector('#tf-next');
@@ -126,7 +143,7 @@ export function mountTrueFalse(container, ctx) {
 
   function finishGame() {
     stopTimer();
-    window.removeEventListener('keydown', onKey);
+    inResult = true;
     const xpEarned = Math.max(25, Math.round(score * 0.45) + correctCount * 10);
     const meta = onFinish({
       gameId: 'truefalse',
@@ -160,15 +177,18 @@ export function mountTrueFalse(container, ctx) {
     `;
     container.querySelector('#btn-replay').addEventListener('click', () => {
       sfx.click();
-      mountTrueFalse(container, ctx);
+      startNewGame();
     });
     container.querySelector('#btn-home').addEventListener('click', () => {
       sfx.click();
+      unmounted = true;
+      window.removeEventListener('keydown', onKey);
       onBack();
     });
   }
 
   function render() {
+    if (unmounted) return;
     answered = false;
     const item = items[idx];
 
@@ -211,6 +231,7 @@ export function mountTrueFalse(container, ctx) {
 
     container.querySelector('#tf-back').addEventListener('click', () => {
       sfx.click();
+      unmounted = true;
       stopTimer();
       window.removeEventListener('keydown', onKey);
       onBack();
@@ -222,9 +243,10 @@ export function mountTrueFalse(container, ctx) {
     startTimer();
   }
 
-  render();
+  startNewGame();
 
   return () => {
+    unmounted = true;
     stopTimer();
     window.removeEventListener('keydown', onKey);
   };

@@ -77,7 +77,8 @@ function generateProblem(grade, wave) {
 export function mountMeteorMath(container, ctx) {
   const { grade, onFinish, onBack } = ctx;
   let rafId = null;
-  let running = true;
+  let focusTimer = null;
+  let running = false;
   let score = 0;
   let destroyed = 0;
   let streak = 0;
@@ -90,50 +91,33 @@ export function mountMeteorMath(container, ctx) {
   let lastSpawn = 0;
   let spawnInterval = grade === 'SD' ? 2700 : grade === 'SMP' ? 2450 : 2300;
 
-  container.innerHTML = `
-    <div class="game-shell">
-      <div class="game-hud">
-        <div class="hud-group">
-          <button id="mt-back" class="btn btn-secondary btn-sm">← Kembali</button>
-          <span class="hud-pill">🚀 Gelombang <span id="mt-wave">1</span></span>
-        </div>
-        <div class="hud-group">
-          <span class="hud-pill score">⭐ <span id="mt-score">0</span></span>
-          <span class="hud-pill streak">🔥 <span id="mt-streak">0x</span></span>
-          <span class="hud-pill lives" id="mt-lives">❤️❤️❤️❤️</span>
-        </div>
-      </div>
-
-      <div class="game-stage meteor-layout">
-        <div class="meteor-canvas-wrap">
-          <canvas id="meteor-canvas"></canvas>
-        </div>
-
-        <div class="meteor-controls">
-          <form id="mt-form" class="meteor-input-group">
-            <input id="mt-input" class="text-input" type="number" inputmode="numeric" placeholder="Ketik jawaban meteor lalu Enter..." autocomplete="off" />
-            <button type="submit" class="btn btn-primary">Tembak Laser ⚡</button>
-          </form>
-          <div id="mt-quick-choices" class="meteor-choices"></div>
-        </div>
-      </div>
-    </div>
-  `;
-
-  const canvas = container.querySelector('#meteor-canvas');
-  const g = canvas.getContext('2d');
-  const inputEl = container.querySelector('#mt-input');
-  const quickChoicesEl = container.querySelector('#mt-quick-choices');
+  let canvas = null;
+  let g = null;
+  let inputEl = null;
+  let quickChoicesEl = null;
 
   function resizeCanvas() {
+    if (!canvas || !canvas.parentElement) return;
     const rect = canvas.parentElement.getBoundingClientRect();
     canvas.width = Math.max(320, Math.floor(rect.width));
     canvas.height = Math.max(300, Math.floor(rect.height));
   }
-  resizeCanvas();
-  window.addEventListener('resize', resizeCanvas);
+
+  function cleanup() {
+    running = false;
+    if (rafId) {
+      cancelAnimationFrame(rafId);
+      rafId = null;
+    }
+    if (focusTimer) {
+      clearTimeout(focusTimer);
+      focusTimer = null;
+    }
+    window.removeEventListener('resize', resizeCanvas);
+  }
 
   function spawnMeteor() {
+    if (!canvas) return;
     const prob = generateProblem(grade, wave);
     const pad = 76;
     const x = randInt(pad, Math.max(pad + 10, canvas.width - pad));
@@ -159,7 +143,6 @@ export function mountMeteorMath(container, ctx) {
       quickChoicesEl.innerHTML = '';
       return;
     }
-    // Lowest (most urgent) meteor + 3 distractors
     const urgent = [...meteors].sort((a, b) => b.y - a.y)[0];
     const set = new Set([urgent.answer]);
     while (set.size < 4) {
@@ -189,7 +172,6 @@ export function mountMeteorMath(container, ctx) {
 
   function fireAnswer(val) {
     if (!running || Number.isNaN(val)) return;
-    // Match lowest meteor with this answer
     const candidates = meteors.filter((m) => m.answer === val).sort((a, b) => b.y - a.y);
     if (candidates.length > 0) {
       const target = candidates[0];
@@ -231,9 +213,7 @@ export function mountMeteorMath(container, ctx) {
   }
 
   function endGame() {
-    running = false;
-    cancelAnimationFrame(rafId);
-    window.removeEventListener('resize', resizeCanvas);
+    cleanup();
     const xpEarned = Math.max(25, Math.round(score * 0.45) + destroyed * 8);
     const meta = onFinish({
       gameId: 'meteor',
@@ -267,7 +247,7 @@ export function mountMeteorMath(container, ctx) {
     `;
     container.querySelector('#btn-replay').addEventListener('click', () => {
       sfx.click();
-      mountMeteorMath(container, ctx);
+      startGame();
     });
     container.querySelector('#btn-home').addEventListener('click', () => {
       sfx.click();
@@ -276,7 +256,7 @@ export function mountMeteorMath(container, ctx) {
   }
 
   function loop(ts) {
-    if (!running) return;
+    if (!running || !g || !canvas) return;
     if (ts - lastSpawn > spawnInterval && meteors.length < 4) {
       spawnMeteor();
       lastSpawn = ts;
@@ -284,7 +264,6 @@ export function mountMeteorMath(container, ctx) {
 
     g.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Draw planetary shield arc
     const shieldY = canvas.height - 26;
     const grad = g.createLinearGradient(0, shieldY - 12, 0, canvas.height);
     grad.addColorStop(0, 'rgba(34, 211, 238, 0.55)');
@@ -292,7 +271,6 @@ export function mountMeteorMath(container, ctx) {
     g.fillStyle = grad;
     g.fillRect(0, shieldY, canvas.width, 26);
 
-    // Draw laser turret
     g.beginPath();
     g.arc(canvas.width / 2, shieldY, 18, Math.PI, 0);
     g.fillStyle = '#22d3ee';
@@ -301,7 +279,6 @@ export function mountMeteorMath(container, ctx) {
     g.lineWidth = 2;
     g.stroke();
 
-    // Update & draw meteors
     for (let i = meteors.length - 1; i >= 0; i--) {
       const m = meteors[i];
       m.y += m.speed;
@@ -321,7 +298,6 @@ export function mountMeteorMath(container, ctx) {
         continue;
       }
 
-      // Glow trail
       g.save();
       g.translate(m.x, m.y);
       const trail = g.createLinearGradient(0, -m.r * 2.1, 0, m.r);
@@ -334,7 +310,6 @@ export function mountMeteorMath(container, ctx) {
       g.lineTo(m.r * 0.7, 0);
       g.fill();
 
-      // Meteor rock
       g.beginPath();
       g.arc(0, 0, m.r, 0, Math.PI * 2);
       const rockGrad = g.createRadialGradient(-8, -8, 4, 0, 0, m.r);
@@ -346,7 +321,6 @@ export function mountMeteorMath(container, ctx) {
       g.strokeStyle = m.y > shieldY - 110 ? '#f43f5e' : '#38bdf8';
       g.stroke();
 
-      // Math text
       g.fillStyle = '#ffffff';
       g.font = `700 ${m.text.length > 10 ? 12 : 15}px "Fredoka", sans-serif`;
       g.textAlign = 'center';
@@ -355,7 +329,6 @@ export function mountMeteorMath(container, ctx) {
       g.restore();
     }
 
-    // Lasers
     for (let i = lasers.length - 1; i >= 0; i--) {
       const l = lasers[i];
       g.save();
@@ -370,7 +343,6 @@ export function mountMeteorMath(container, ctx) {
       if (l.life <= 0) lasers.splice(i, 1);
     }
 
-    // Sparks
     for (let i = sparks.length - 1; i >= 0; i--) {
       const sp = sparks[i];
       sp.x += sp.vx;
@@ -391,32 +363,81 @@ export function mountMeteorMath(container, ctx) {
     rafId = requestAnimationFrame(loop);
   }
 
-  container.querySelector('#mt-form').addEventListener('submit', (e) => {
-    e.preventDefault();
-    const raw = inputEl.value.trim();
-    if (raw !== '') {
-      fireAnswer(Number(raw));
-      inputEl.value = '';
-    }
-    inputEl.focus();
-  });
+  function startGame() {
+    cleanup();
+    running = true;
+    score = 0;
+    destroyed = 0;
+    streak = 0;
+    maxStreak = 0;
+    lives = 4;
+    wave = 1;
+    meteors = [];
+    lasers = [];
+    sparks = [];
+    spawnInterval = grade === 'SD' ? 2700 : grade === 'SMP' ? 2450 : 2300;
 
-  container.querySelector('#mt-back').addEventListener('click', () => {
-    sfx.click();
-    running = false;
-    cancelAnimationFrame(rafId);
-    window.removeEventListener('resize', resizeCanvas);
-    onBack();
-  });
+    container.innerHTML = `
+      <div class="game-shell">
+        <div class="game-hud">
+          <div class="hud-group">
+            <button id="mt-back" class="btn btn-secondary btn-sm">← Kembali</button>
+            <span class="hud-pill">🚀 Gelombang <span id="mt-wave">1</span></span>
+          </div>
+          <div class="hud-group">
+            <span class="hud-pill score">⭐ <span id="mt-score">0</span></span>
+            <span class="hud-pill streak">🔥 <span id="mt-streak">0x</span></span>
+            <span class="hud-pill lives" id="mt-lives">❤️❤️❤️❤️</span>
+          </div>
+        </div>
 
-  spawnMeteor();
-  lastSpawn = performance.now();
-  rafId = requestAnimationFrame(loop);
-  setTimeout(() => inputEl?.focus(), 100);
+        <div class="game-stage meteor-layout">
+          <div class="meteor-canvas-wrap">
+            <canvas id="meteor-canvas"></canvas>
+          </div>
 
-  return () => {
-    running = false;
-    cancelAnimationFrame(rafId);
-    window.removeEventListener('resize', resizeCanvas);
-  };
+          <div class="meteor-controls">
+            <form id="mt-form" class="meteor-input-group">
+              <input id="mt-input" class="text-input" type="number" inputmode="numeric" placeholder="Ketik jawaban meteor lalu Enter..." autocomplete="off" />
+              <button type="submit" class="btn btn-primary">Tembak Laser ⚡</button>
+            </form>
+            <div id="mt-quick-choices" class="meteor-choices"></div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    canvas = container.querySelector('#meteor-canvas');
+    g = canvas.getContext('2d');
+    inputEl = container.querySelector('#mt-input');
+    quickChoicesEl = container.querySelector('#mt-quick-choices');
+
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    container.querySelector('#mt-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const raw = inputEl.value.trim();
+      if (raw !== '') {
+        fireAnswer(Number(raw));
+        inputEl.value = '';
+      }
+      inputEl.focus();
+    });
+
+    container.querySelector('#mt-back').addEventListener('click', () => {
+      sfx.click();
+      cleanup();
+      onBack();
+    });
+
+    spawnMeteor();
+    lastSpawn = performance.now();
+    rafId = requestAnimationFrame(loop);
+    focusTimer = setTimeout(() => inputEl?.focus(), 100);
+  }
+
+  startGame();
+
+  return cleanup;
 }

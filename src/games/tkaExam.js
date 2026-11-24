@@ -165,12 +165,16 @@ export function mountTkaExam(container, ctx) {
 
         <div class="filter-row">
           <button class="filter-chip ${mode === 'tka' ? 'active' : ''}" data-mode="tka">
-            🎯 Paket TKA ${grade} (${grade === 'SMA' ? 'Wajib + Pilihan' : 'Matematika & B. Indonesia'})
+            🎯 Paket Latihan TKA ${grade} (${grade === 'SMA' ? 'Wajib + Pilihan' : 'Matematika & B. Indonesia'})
           </button>
           <button class="filter-chip ${mode === 'us' ? 'active' : ''}" data-mode="us">
-            📚 Paket Ujian Sekolah (Semua Mapel Merdeka & K13)
+            📚 Paket Latihan Ujian Sekolah (Semua Mapel Merdeka & K13)
           </button>
         </div>
+
+        <p style="font-size:0.8rem;color:var(--text-muted);font-weight:700;margin-bottom:0.9rem;">
+          ℹ️ Soal latihan mandiri mengacu kisi-kisi kurikulum nasional (bukan soal resmi Kemendikdasmen).
+        </p>
 
         <div class="tka-layout">
           <div class="game-stage">

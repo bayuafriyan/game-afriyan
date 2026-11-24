@@ -1,4 +1,4 @@
-// Game 4: Susun Kata Cerdas (Word Scramble & Trivia)
+// Game 4: Susun Kata (Word Scramble & Trivia)
 import { WORD_SCRAMBLE_BANK } from '../data/wordData.js';
 import { sfx } from '../utils/audio.js';
 import { fx } from '../utils/particles.js';
@@ -14,7 +14,7 @@ function shuffle(arr) {
 
 export function mountWordScramble(container, ctx) {
   const { grade, onFinish, onBack } = ctx;
-  const rounds = shuffle(WORD_SCRAMBLE_BANK[grade] || WORD_SCRAMBLE_BANK.SD).slice(0, 6);
+  let rounds = [];
   let idx = 0;
   let score = 0;
   let correctCount = 0;
@@ -26,8 +26,32 @@ export function mountWordScramble(container, ctx) {
   let bankLetters = [];
   let chosen = [];
   let solved = false;
+  let inResult = false;
+  let unmounted = false;
+  let resetTimer = null;
+
+  function clearResetTimer() {
+    if (resetTimer) {
+      clearTimeout(resetTimer);
+      resetTimer = null;
+    }
+  }
+
+  function startNewGame() {
+    clearResetTimer();
+    rounds = shuffle(WORD_SCRAMBLE_BANK[grade] || WORD_SCRAMBLE_BANK.SD).slice(0, 6);
+    idx = 0;
+    score = 0;
+    correctCount = 0;
+    streak = 0;
+    maxStreak = 0;
+    hintsLeft = 3;
+    inResult = false;
+    setupRound();
+  }
 
   function setupRound() {
+    clearResetTimer();
     solved = false;
     const item = rounds[idx];
     targetWord = item.word.toUpperCase();
@@ -42,7 +66,7 @@ export function mountWordScramble(container, ctx) {
   }
 
   function pickLetter(bankIdx) {
-    if (solved) return;
+    if (solved || inResult) return;
     const tile = bankLetters[bankIdx];
     if (!tile || tile.used) return;
     tile.used = true;
@@ -56,7 +80,7 @@ export function mountWordScramble(container, ctx) {
   }
 
   function removeSlot(slotPos) {
-    if (solved) return;
+    if (solved || inResult) return;
     const bankIdx = chosen[slotPos];
     if (bankIdx === undefined) return;
     bankLetters[bankIdx].used = false;
@@ -85,8 +109,9 @@ export function mountWordScramble(container, ctx) {
         void stage.offsetWidth;
         stage.classList.add('anim-shake');
       }
-      setTimeout(() => {
-        if (solved) return;
+      clearResetTimer();
+      resetTimer = setTimeout(() => {
+        if (unmounted || solved || inResult) return;
         bankLetters.forEach((b) => (b.used = false));
         chosen = [];
         render();
@@ -95,7 +120,7 @@ export function mountWordScramble(container, ctx) {
   }
 
   function useHint() {
-    if (solved || hintsLeft <= 0) return;
+    if (solved || inResult || hintsLeft <= 0) return;
     const nextPos = chosen.length;
     if (nextPos >= targetWord.length) return;
     const neededChar = targetWord[nextPos];
@@ -107,6 +132,7 @@ export function mountWordScramble(container, ctx) {
   }
 
   function onKeyDown(e) {
+    if (unmounted || inResult) return;
     if (solved) {
       if (e.key === 'Enter') nextRound();
       return;
@@ -134,7 +160,8 @@ export function mountWordScramble(container, ctx) {
   }
 
   function finishGame() {
-    window.removeEventListener('keydown', onKeyDown);
+    clearResetTimer();
+    inResult = true;
     const xpEarned = Math.max(30, Math.round(score * 0.45) + correctCount * 10);
     const meta = onFinish({
       gameId: 'scramble',
@@ -152,7 +179,7 @@ export function mountWordScramble(container, ctx) {
         <div class="game-stage result-screen">
           <div class="result-trophy">🧩</div>
           <h2>${meta.isNewBest ? 'Rekor Susun Kata Baru!' : 'Semua Kata Tersusun!'}</h2>
-          <p class="result-subtitle">Susun Kata Cerdas • Jenjang ${grade}</p>
+          <p class="result-subtitle">Susun Kata • Jenjang ${grade}</p>
           <div class="result-stats">
             <div class="result-stat-box"><strong>${score}</strong><span>Skor Akhir</span></div>
             <div class="result-stat-box"><strong>${correctCount}/${rounds.length}</strong><span>Kata Terpecahkan</span></div>
@@ -168,15 +195,18 @@ export function mountWordScramble(container, ctx) {
     `;
     container.querySelector('#btn-replay').addEventListener('click', () => {
       sfx.click();
-      mountWordScramble(container, ctx);
+      startNewGame();
     });
     container.querySelector('#btn-home').addEventListener('click', () => {
       sfx.click();
+      unmounted = true;
+      window.removeEventListener('keydown', onKeyDown);
       onBack();
     });
   }
 
   function render() {
+    if (unmounted) return;
     const item = rounds[idx];
     container.innerHTML = `
       <div class="game-shell">
@@ -225,7 +255,7 @@ export function mountWordScramble(container, ctx) {
             solved
               ? `
             <div class="explanation-box">
-              <p><strong>🎉 Benar! (${targetWord})</strong> — ${item.fact}</p>
+              <p><strong>🎉 Benar! (${targetWord})</strong>: ${item.fact}</p>
               <button id="ws-next" class="btn btn-success btn-sm">
                 ${idx >= rounds.length - 1 ? 'Lihat Hasil 🏆' : 'Kata Berikutnya →'}
               </button>
@@ -248,6 +278,8 @@ export function mountWordScramble(container, ctx) {
 
     container.querySelector('#ws-back').addEventListener('click', () => {
       sfx.click();
+      unmounted = true;
+      clearResetTimer();
       window.removeEventListener('keydown', onKeyDown);
       onBack();
     });
@@ -285,9 +317,11 @@ export function mountWordScramble(container, ctx) {
     }
   }
 
-  setupRound();
+  startNewGame();
 
   return () => {
+    unmounted = true;
+    clearResetTimer();
     window.removeEventListener('keydown', onKeyDown);
   };
 }

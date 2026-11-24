@@ -24,11 +24,17 @@ export function mountMemoryMatch(container, ctx) {
   let maxStreak = 0;
   let seconds = 0;
   let timerId = null;
+  let flipTimer = null;
+  let unmounted = false;
 
   function stopTimer() {
     if (timerId) {
       clearInterval(timerId);
       timerId = null;
+    }
+    if (flipTimer) {
+      clearTimeout(flipTimer);
+      flipTimer = null;
     }
   }
 
@@ -103,6 +109,7 @@ export function mountMemoryMatch(container, ctx) {
 
     container.querySelector('#mm-back').addEventListener('click', () => {
       sfx.click();
+      unmounted = true;
       stopTimer();
       onBack();
     });
@@ -144,7 +151,8 @@ export function mountMemoryMatch(container, ctx) {
         maxStreak = Math.max(maxStreak, streak);
         sfx.correct(streak);
 
-        setTimeout(() => {
+        flipTimer = setTimeout(() => {
+          if (unmounted) return;
           first.el.classList.add('matched');
           second.el.classList.add('matched');
           const rect = second.el.getBoundingClientRect();
@@ -165,7 +173,8 @@ export function mountMemoryMatch(container, ctx) {
         streak = 0;
         const stEl = container.querySelector('#mm-streak');
         if (stEl) stEl.textContent = '0x';
-        setTimeout(() => {
+        flipTimer = setTimeout(() => {
+          if (unmounted) return;
           sfx.wrong();
           first.el.classList.remove('flipped');
           second.el.classList.remove('flipped');
@@ -225,5 +234,8 @@ export function mountMemoryMatch(container, ctx) {
 
   start(6);
 
-  return () => stopTimer();
+  return () => {
+    unmounted = true;
+    stopTimer();
+  };
 }

@@ -144,18 +144,21 @@ class MusicPlayer {
     this.play();
   }
 
-  loadCustomUrl(url, label = 'Musik URL Custom') {
-    if (!url) return;
+  loadCustomUrl(url, label = 'Musik URL Custom', onError = null) {
+    if (!url || !/^https?:\/\//i.test(url)) {
+      if (onError) onError();
+      return;
+    }
     this.stop();
     this.customUrl = url;
     this.customName = label;
     this.customAudio.src = url;
     this.customAudio.volume = this.volume;
     this.mode = 'custom';
-    this.play();
+    this.play(onError);
   }
 
-  play() {
+  play(onError = null) {
     if (this.isPlaying) return;
     if (this.mode === 'custom' && this.customAudio.src) {
       this.customAudio.volume = this.volume;
@@ -165,6 +168,7 @@ class MusicPlayer {
       }).catch(() => {
         this.isPlaying = false;
         this._notify();
+        if (onError) onError();
       });
       return;
     }
@@ -221,9 +225,9 @@ class MusicPlayer {
     this._notify();
   }
 
-  toggle() {
+  toggle(onError = null) {
     if (this.isPlaying) this.stop();
-    else this.play();
+    else this.play(onError);
   }
 }
 

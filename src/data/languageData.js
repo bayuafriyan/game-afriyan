@@ -24,7 +24,7 @@ export const LANG_META = {
     name: 'Bahasa Mandarin',
     flag: '🇨🇳',
     color: '#d97706',
-    levelLabel: { SD: 'YCT 1–3 / HSK 1', SMP: 'HSK 2–3', SMA: 'HSK 3–4' },
+    levelLabel: { SD: 'YCT 1/2 & HSK 1', SMP: 'HSK 2 & 3', SMA: 'HSK 3 & 4' },
   },
 };
 
@@ -43,7 +43,7 @@ export const LANG_VOCAB = {
       emoji: '☀️',
       id: 'Matahari',
       en: { text: 'Sun', phonetic: '/sʌn/', example: 'The sun is bright today.', level: 'Pre-A1' },
-      ja: { text: '日', reading: 'ひ / たいよう', romaji: 'taiyou', strokes: 4, example: 'たいよう が あかるい です。', level: 'Pre-N5' },
+      ja: { text: '太陽', reading: 'たいよう', romaji: 'taiyou', strokes: 16, example: 'たいよう が あかるい です。', level: 'Pre-N5' },
       zh: { text: '日', pinyin: 'rì', tones: [4], strokes: 4, example: '太阳出来了。(Tàiyáng chūlái le.)', level: 'YCT 1' },
     },
     {
@@ -75,16 +75,16 @@ export const LANG_VOCAB = {
       emoji: '👋',
       id: 'Halo / Selamat Siang',
       en: { text: 'Hello', phonetic: '/həˈloʊ/', example: 'Hello, my name is Budi!', level: 'Pre-A1' },
-      ja: { text: 'こんにちは', reading: 'こんにちは', romaji: 'konnichiwa', strokes: 5, example: 'こんにちは！げんき ですか？', level: 'Pre-N5' },
-      zh: { text: '你好', pinyin: 'nǐ hǎo', tones: [3, 3], strokes: 13, example: '你好，我叫小明的同学！', level: 'YCT 1' },
+      ja: { text: 'こんにちは', reading: 'こんにちは', romaji: 'konnichiwa', strokes: 11, example: 'こんにちは！げんき ですか？', level: 'Pre-N5' },
+      zh: { text: '你好', pinyin: 'nǐ hǎo', tones: [3, 3], strokes: 13, example: '你好，我叫小明！(Nǐ hǎo, wǒ jiào Xiǎomíng!)', level: 'YCT 1' },
     },
     {
       concept_id: 'thanks',
       emoji: '🙏',
       id: 'Terima Kasih',
       en: { text: 'Thank you', phonetic: '/θæŋk juː/', example: 'Thank you for your help!', level: 'Pre-A1' },
-      ja: { text: 'ありがとう', reading: 'ありがとう', romaji: 'arigatou', strokes: 5, example: 'ありがとう ございます！', level: 'Pre-N5' },
-      zh: { text: '谢谢', pinyin: 'xièxie', tones: [4, 0], strokes: 12, example: '谢谢你！(Xièxie nǐ!)', level: 'YCT 1' },
+      ja: { text: 'ありがとう', reading: 'ありがとう', romaji: 'arigatou', strokes: 14, example: 'ありがとう ございます！', level: 'Pre-N5' },
+      zh: { text: '谢谢', pinyin: 'xièxie', tones: [4, 0], strokes: 24, example: '谢谢你！(Xièxie nǐ!)', level: 'YCT 1' },
     },
     {
       concept_id: 'cat',
@@ -134,7 +134,7 @@ export const LANG_VOCAB = {
       emoji: '🍜',
       id: 'Enak / Lezat',
       en: { text: 'Delicious', phonetic: '/dɪˈlɪʃ.əs/', example: 'This fried rice is delicious!', level: 'A2' },
-      ja: { text: '美味しい', reading: 'おいしい', romaji: 'oishii', strokes: 17, example: 'この ラーメン は おいしい です。', level: 'N5' },
+      ja: { text: '美味しい', reading: 'おいしい', romaji: 'oishii', strokes: 20, example: 'この ラーメン は おいしい です。', level: 'N5' },
       zh: { text: '好吃', pinyin: 'hǎochī', tones: [3, 1], strokes: 12, example: '这个面条很好吃！', level: 'HSK 2' },
     },
     {
@@ -292,10 +292,10 @@ export const LANG_DIALOGUES = {
         npc: '👨‍🏫 Tanaka-sensei',
         npcText: 'しょうらい、どんな しごと が したい ですか？',
         romaji: 'Shourai, donna shigoto ga shitai desu ka?',
-        hint: 'Jawab cita-citamu dengan bahasa sopan (-teineigo) kepada guru!',
+        hint: 'Jawab cita-citamu dengan bahasa sopan (teineigo) kepada guru!',
         options: [
           { text: 'エンジニア に なりたい です。まいにち どりょく します。', ok: true, reply: 'すばらしい ですね！おうえん しています！(Luar biasa, saya mendukungmu!)' },
-          { text: 'しらない よ。(Shiranai yo.)', ok: false, reply: 'Terlalu kasual untuk berbicara dengan guru (sensei)! Gunakan bentuk -desu/-masu.' },
+          { text: 'しらない よ。(Shiranai yo.)', ok: false, reply: 'Terlalu kasual untuk berbicara dengan guru (sensei)! Gunakan bentuk sopan desu/masu.' },
           { text: 'きのう たべました。(Kinou tabemashita.)', ok: false, reply: 'Sensei bertanya tentang cita-cita masa depan (shourai).' },
         ],
       },

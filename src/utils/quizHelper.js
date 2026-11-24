@@ -1,5 +1,14 @@
-// Smart Quiz Shuffler: Acak urutan soal + acak posisi opsi A/B/C/D
+// Smart Quiz Shuffler: Acak urutan soal + acak posisi opsi A/B/C/D + HTML escaping
 // Menjamin distribusi kunci jawaban A/B/C/D seimbang dan tidak beruntun (anti-pola B semua)
+
+export function escapeHtml(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 export function shuffleArray(arr) {
   const copy = [...arr];
@@ -35,9 +44,18 @@ function buildBalancedAnswerSlots(count) {
   const fallback = shuffleArray(base);
   for (let i = 1; i < fallback.length; i++) {
     if (fallback[i] === fallback[i - 1]) {
-      const swapIdx = fallback.findIndex(
+      let swapIdx = fallback.findIndex(
         (v, idx) => idx > i && v !== fallback[i - 1]
       );
+      if (swapIdx === -1) {
+        swapIdx = fallback.findIndex(
+          (v, idx) =>
+            idx < i - 1 &&
+            v !== fallback[i - 1] &&
+            (idx === 0 || fallback[idx - 1] !== fallback[i]) &&
+            fallback[idx + 1] !== fallback[i]
+        );
+      }
       if (swapIdx !== -1) {
         [fallback[i], fallback[swapIdx]] = [fallback[swapIdx], fallback[i]];
       }

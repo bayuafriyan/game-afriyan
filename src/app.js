@@ -3,6 +3,7 @@ import { sfx } from './utils/audio.js';
 import { fx } from './utils/particles.js';
 import { bgm, RECOMMENDED_TRACKS } from './utils/music.js';
 import { icon } from './utils/icons.js';
+import { escapeHtml } from './utils/quizHelper.js';
 import {
   AVATARS,
   BADGE_DEFS,
@@ -148,7 +149,6 @@ function showToast(emojiOrIcon, text) {
 function applyGradeTheme(grade) {
   document.documentElement.dataset.grade = grade;
   fx.setGrade(grade);
-  bgm.recommendForGrade(grade);
 }
 
 function hydrateStaticIcons() {
@@ -222,7 +222,7 @@ function renderHome() {
         <div class="stats-header">
           <div class="hero-avatar-big">${profile.avatar}</div>
           <div>
-            <div class="stats-title">${profile.name}</div>
+            <div class="stats-title">${escapeHtml(profile.name)}</div>
             <div class="stats-rank">Level ${lv.level} • ${lv.rank}</div>
           </div>
         </div>
@@ -280,6 +280,11 @@ function renderHome() {
         `;
       }).join('')}
     </section>
+
+    <footer class="lobby-footer">
+      <span>📚 Soal latihan mandiri berbasis kurikulum nasional • Data progres tersimpan aman di perangkatmu</span>
+      <button id="btn-open-info" class="btn btn-secondary btn-sm">ℹ️ Info Orang Tua & Guru</button>
+    </footer>
   `;
 
   root.querySelectorAll('.game-card').forEach((card) => {
@@ -308,6 +313,11 @@ function renderHome() {
   root.querySelector('#btn-open-music').addEventListener('click', () => {
     sfx.click();
     openMusicModal();
+  });
+
+  root.querySelector('#btn-open-info').addEventListener('click', () => {
+    sfx.click();
+    openInfoModal();
   });
 }
 
@@ -357,7 +367,7 @@ function openMusicModal() {
     <div style="display:flex;align-items:center;justify-content:space-between;gap:0.75rem;margin-bottom:0.8rem;padding:0.8rem 1rem;border-radius:16px;background:#f1f5f9;border:2px solid #cbd5e1;">
       <div>
         <div style="font-size:0.73rem;color:var(--text-muted);font-weight:800;">SEDANG DIPILIH</div>
-        <strong style="font-family:var(--font-display);font-size:1.05rem;color:#0f172a;">${st.currentTitle}</strong>
+        <strong style="font-family:var(--font-display);font-size:1.05rem;color:#0f172a;">${escapeHtml(st.currentTitle)}</strong>
       </div>
       <button id="m-toggle-play" class="btn ${st.isPlaying ? 'btn-danger' : 'btn-success'} btn-sm">
         ${st.isPlaying ? `${icon('pause')} Jeda` : `${icon('play')} Putar Musik`}
@@ -401,7 +411,7 @@ function openMusicModal() {
           <input id="m-file-input" type="file" accept="audio/*" style="display:none;" />
         </label>
         <span style="font-size:0.78rem;color:var(--text-muted);">
-          ${st.customName ? `Aktif: ${st.customName}` : 'Format: MP3, WAV, M4A, OGG'}
+          ${st.customName ? `Aktif: ${escapeHtml(st.customName)}` : 'Format: MP3, WAV, M4A, OGG'}
         </span>
       </div>
       <div style="display:flex;gap:0.5rem;">
@@ -414,7 +424,9 @@ function openMusicModal() {
   modalContent.querySelector('#m-close').addEventListener('click', closeModal);
 
   modalContent.querySelector('#m-toggle-play').addEventListener('click', () => {
-    bgm.toggle();
+    bgm.toggle(() => {
+      showToast('⚠️', 'Audio custom gagal diputar. Coba pilih musik rekomendasi atau unggah file lain.');
+    });
     openMusicModal();
   });
 
@@ -445,10 +457,40 @@ function openMusicModal() {
   modalContent.querySelector('#m-url-btn').addEventListener('click', () => {
     const url = modalContent.querySelector('#m-url-input').value.trim();
     if (!url) return;
-    bgm.loadCustomUrl(url, 'Audio URL Custom');
+    bgm.loadCustomUrl(url, 'Audio URL Custom', () => {
+      showToast('⚠️', 'Gagal memuat URL audio. Pastikan link langsung ke file MP3/OGG.');
+    });
     showToast('🎧', 'Memutar musik dari URL custom...');
     openMusicModal();
   });
+}
+
+function openInfoModal() {
+  openModal(`
+    <div class="modal-header">
+      <h2>ℹ️ Info Orang Tua & Guru</h2>
+      <button class="modal-close" id="m-close">✕</button>
+    </div>
+    <div class="info-list">
+      <div class="info-card">
+        <strong>🔒 Privasi Anak Aman</strong>
+        <p>Game ini berjalan tanpa akun atau login. Nama panggilan, avatar, XP, dan skor hanya tersimpan di browser perangkat masing-masing (localStorage) dan tidak dikirim ke server.</p>
+      </div>
+      <div class="info-card">
+        <strong>📚 Soal Latihan Mandiri</strong>
+        <p>Seluruh soal bertanda Latihan TKA, ANBK, Ujian Sekolah, dan UTBK disusun sebagai bahan latihan edukatif mengacu kisi-kisi kurikulum nasional, bukan naskah resmi pemerintah.</p>
+      </div>
+      <div class="info-card">
+        <strong>🎙️ Fitur Suara & Mikrofon</strong>
+        <p>Pada menu Arena 3 Bahasa, fitur Speaking memakai layanan pengenalan suara bawaan browser (Web Speech API) dan hanya aktif saat tombol mikrofon ditekan.</p>
+      </div>
+      <div class="info-card">
+        <strong>🎵 Musik Latar Lokal</strong>
+        <p>File musik custom yang dipilih dari perangkat hanya diputar langsung di browser perangkat tersebut dan tidak pernah diunggah ke internet.</p>
+      </div>
+    </div>
+  `);
+  modalContent.querySelector('#m-close').addEventListener('click', closeModal);
 }
 
 function openProfileModal() {
@@ -462,7 +504,7 @@ function openProfileModal() {
     <label style="display:block;font-size:0.84rem;color:var(--text-secondary);margin-bottom:0.35rem;font-weight:700;">
       Nama Pemain
     </label>
-    <input id="inp-name" class="text-input" maxlength="22" value="${profile.name}" />
+    <input id="inp-name" class="text-input" maxlength="22" value="${escapeHtml(profile.name)}" />
 
     <label style="display:block;font-size:0.84rem;color:var(--text-secondary);margin-top:1rem;font-weight:700;">
       Pilih Avatar
@@ -549,7 +591,7 @@ function openQuestsModal() {
               </div>
               ${
                 q.claimed
-                  ? `<span style="color:var(--accent-emerald);font-weight:800;font-size:0.85rem;">✓ Selesai</span>`
+                  ? `<span style="color:#15803d;font-weight:800;font-size:0.85rem;">✓ Selesai</span>`
                   : ready
                     ? `<button class="btn btn-success btn-sm claim-quest-btn" data-qid="${q.id}">Klaim +${q.reward} XP</button>`
                     : `<span style="color:var(--text-muted);font-size:0.8rem;font-weight:700;">${pct}%</span>`
@@ -599,6 +641,7 @@ function initEvents() {
       profile.grade = nextGrade;
       saveProfile(profile);
       applyGradeTheme(nextGrade);
+      bgm.recommendForGrade(nextGrade);
       syncTopbar();
       showToast('🎓', `Jenjang & tema diganti ke ${nextGrade}!`);
       if (currentGameId) launchGame(currentGameId);

@@ -158,7 +158,7 @@ export function mountQuizBlitz(container, ctx) {
         <div class="game-stage result-screen">
           <div class="result-trophy">${correctCount >= questions.length * 0.8 ? '🏆' : correctCount >= questions.length * 0.5 ? '🌟' : '💪'}</div>
           <h2>${meta.isNewBest ? 'Rekor Baru Tercapai!' : 'Ronde Selesai!'}</h2>
-          <p class="result-subtitle">Cepat Tepat Arena • Jenjang ${grade} (${selectedSubject})</p>
+          <p class="result-subtitle">Cepat Tepat • Jenjang ${grade} (${selectedSubject})</p>
           <div class="result-stats">
             <div class="result-stat-box"><strong>${score}</strong><span>Skor Akhir</span></div>
             <div class="result-stat-box"><strong>${correctCount}/${questions.length}</strong><span>Jawaban Benar</span></div>
@@ -270,7 +270,7 @@ export function mountQuizBlitz(container, ctx) {
       lifelines.fifty = false;
       e.currentTarget.disabled = true;
       sfx.click();
-      const wrongIndices = [0, 1, 2, 3].filter((i) => i !== q.answer);
+      const wrongIndices = q.options.map((_, i) => i).filter((i) => i !== q.answer);
       const toHide = shuffle(wrongIndices).slice(0, 2);
       toHide.forEach((i) => {
         const b = container.querySelector(`.option-btn[data-idx="${i}"]`);

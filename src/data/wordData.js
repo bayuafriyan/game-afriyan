@@ -43,7 +43,7 @@ export const WORD_SCRAMBLE_BANK = {
   SD: [
     { word: 'JUPITER', cat: 'Tata Surya', clue: 'Planet terbesar di tata surya kita', fact: 'Jupiter memiliki badai raksasa bernama Bintik Merah Besar.' },
     { word: 'INSANG', cat: 'IPA', clue: 'Alat pernapasan ikan di dalam air', fact: 'Insang menyaring oksigen terlarut dari air.' },
-    { word: 'GARUDA', cat: 'Nusantara', clue: 'Lambang negara Republik Indonesia', fact: 'Bulu Garuda melambangkan tanggal Proklamasi 17-8-1945.' },
+    { word: 'GARUDA', cat: 'Nusantara', clue: 'Lambang negara Republik Indonesia', fact: 'Bulu Garuda melambangkan tanggal Proklamasi 17 Agustus 1945.' },
     { word: 'SEMERU', cat: 'Geografi', clue: 'Gunung tertinggi di Pulau Jawa', fact: 'Puncak Semeru bernama Mahameru (3.676 mdpl).' },
     { word: 'KOMODO', cat: 'Fauna', clue: 'Kadal purba raksasa asli dari NTT', fact: 'Komodo adalah kadal terbesar yang masih hidup di Bumi.' },
     { word: 'PERSEGI', cat: 'Matematika', clue: 'Bangun datar dengan 4 sisi sama panjang dan 4 sudut siku-siku', fact: 'Luas persegi dihitung dengan rumus sisi × sisi.' },
