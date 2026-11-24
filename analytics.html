@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="id" data-grade="SD">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0284c7" />
+  <title>Statistik Trafik &amp; Kritik Saran | Makin Cerdas Makin Sukses</title>
+  <meta name="description" content="Visualisasi data pengunjung, aktivitas 8 mode permainan edukasi, dan rekap kritik serta saran di Cloudflare D1." />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%232563eb'/%3E%3Ctext x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-size='36'%3E%F0%9F%93%8A%3C/text%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Poppins:wght@500;600;700&family=Quicksand:wght@600;700&family=Rubik:wght@700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles/main.css" />
+  <link rel="stylesheet" href="/styles/analytics.css" />
+</head>
+<body>
+  <div class="dash-shell">
+    <header class="dash-topbar">
+      <div class="dash-title-wrap">
+        <a href="/" class="dash-logo-link" title="Kembali ke Arena Belajar">
+          <span class="dash-logo-badge">📊</span>
+          <div>
+            <h1>Statistik Trafik, Game &amp; Kritik Saran</h1>
+            <p class="dash-subtitle">Makin Cerdas Makin Sukses • Analitik Langsung Cloudflare D1 &amp; Web Analytics</p>
+          </div>
+        </a>
+      </div>
+
+      <div class="dash-toolbar">
+        <span id="dash-status-pill" class="dash-status-pill">Memuat data...</span>
+        <a href="https://github.com/bayuafriyan/game-afriyan" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">
+          Repositori GitHub
+        </a>
+        <button id="btn-refresh" type="button" class="btn btn-secondary btn-sm">🔄 Muat Ulang</button>
+        <button id="btn-export-csv" type="button" class="btn btn-amber btn-sm">📥 Unduh CSV Masukan</button>
+        <a href="/" class="btn btn-primary btn-sm">🎮 Mainkan Game</a>
+      </div>
+    </header>
+
+    <div class="dash-meta-bar">
+      <span id="dash-updated-at">Sinkronisasi data server...</span>
+      <span>Privasi terjaga: IP pengunjung selalu di-hash SHA-256 harian tanpa menyimpan identitas pribadi.</span>
+    </div>
+
+    <section id="kpi-grid" class="kpi-grid" aria-label="Ringkasan Statistik Utama"></section>
+
+    <section class="dash-grid-2">
+      <article class="dash-card dash-span-2">
+        <div class="dash-card-head">
+          <div>
+            <h2>Tren Trafik &amp; Aktivitas 14 Hari Terakhir</h2>
+            <p>Perbandingan halaman dibuka, pengunjung unik harian, sesi game dimulai, dan masukan masuk</p>
+          </div>
+          <div id="trend-tabs" class="trend-tabs" role="tablist" aria-label="Pilih metrik grafik">
+            <button type="button" class="trend-tab active" data-metric="all">Ringkas (Semua)</button>
+            <button type="button" class="trend-tab" data-metric="pageViews">Halaman Dibuka</button>
+            <button type="button" class="trend-tab" data-metric="uniqueVisitors">Pengunjung Unik</button>
+            <button type="button" class="trend-tab" data-metric="gameStarts">Sesi Game</button>
+            <button type="button" class="trend-tab" data-metric="feedbackCount">Kritik &amp; Saran</button>
+          </div>
+        </div>
+        <div id="trend-chart-wrap" class="trend-chart-wrap"></div>
+        <div id="trend-legend" class="trend-legend"></div>
+      </article>
+
+      <article class="dash-card">
+        <div class="dash-card-head">
+          <div>
+            <h2>Popularitas &amp; Skor 8 Mode Game</h2>
+            <p>Jumlah ronde dimulai, selesai, rata-rata skor, dan rekor tertinggi</p>
+          </div>
+        </div>
+        <div id="games-chart" class="bars-stack"></div>
+      </article>
+
+      <article class="dash-card">
+        <div class="dash-card-head">
+          <div>
+            <h2>Sebaran Jenjang, Perangkat &amp; Negara</h2>
+            <p>Komposisi pemain SD/SMP/SMA, HP vs Desktop, dan lokasi wilayah</p>
+          </div>
+        </div>
+        <div class="donuts-grid">
+          <div id="grades-donut" class="donut-box"></div>
+          <div id="devices-donut" class="donut-box"></div>
+        </div>
+        <div class="sub-block">
+          <h3>Wilayah Pengunjung Teratas</h3>
+          <div id="countries-list" class="country-chips"></div>
+        </div>
+      </article>
+
+      <article class="dash-card">
+        <div class="dash-card-head">
+          <div>
+            <h2>Distribusi Penilaian Kritik &amp; Saran</h2>
+            <p>Sebaran bintang kepuasan, kategori masukan, dan peran pengirim</p>
+          </div>
+        </div>
+        <div id="rating-bars" class="bars-stack"></div>
+        <div class="sub-block">
+          <h3>Berdasarkan Kategori</h3>
+          <div id="category-bars" class="bars-stack compact"></div>
+        </div>
+        <div class="sub-block">
+          <h3>Berdasarkan Peran</h3>
+          <div id="role-bars" class="role-pills"></div>
+        </div>
+      </article>
+
+      <article class="dash-card">
+        <div class="dash-card-head">
+          <div>
+            <h2>Aktivitas Permainan Terbaru</h2>
+            <p>20 catatan terbaru sesi belajar &amp; bermain yang tercatat di server</p>
+          </div>
+        </div>
+        <div id="recent-plays-wrap" class="recent-plays-wrap"></div>
+      </article>
+    </section>
+
+    <section class="dash-card dash-feedback-section">
+      <div class="dash-card-head">
+        <div>
+          <h2>Daftar Kritik &amp; Saran Lengkap</h2>
+          <p>Telusuri masukan dari Siswa, Orang Tua, Guru, dan Umum secara real-time</p>
+        </div>
+        <div class="fb-filters">
+          <input id="fb-search" type="search" class="feedback-input fb-filter-input" placeholder="Cari nama atau isi pesan..." />
+          <select id="fb-filter-cat" class="feedback-select fb-filter-select" aria-label="Filter kategori">
+            <option value="">Semua Kategori</option>
+          </select>
+          <select id="fb-filter-rating" class="feedback-select fb-filter-select" aria-label="Filter rating">
+            <option value="">Semua Rating</option>
+            <option value="5">5 Bintang</option>
+            <option value="4">4 Bintang</option>
+            <option value="3">3 Bintang</option>
+            <option value="2">2 Bintang</option>
+            <option value="1">1 Bintang</option>
+          </select>
+        </div>
+      </div>
+      <div id="feedback-list-dash" class="dash-feedback-grid"></div>
+    </section>
+  </div>
+
+  <script type="module" src="/src/analytics.js"></script>
+  <script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "742f11b09d3942aa87ccdfd9c750c2f5"}'></script>
+</body>
+</html>

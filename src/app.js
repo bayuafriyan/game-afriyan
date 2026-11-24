@@ -28,6 +28,7 @@ import {
   fetchFeedback,
   sendFeedback,
 } from './utils/feedback.js';
+import { trackGameplay } from './utils/telemetry.js';
 
 const GAMES = [
   {
@@ -167,6 +168,8 @@ function hydrateStaticIcons() {
   document.getElementById('quest-icon-slot').innerHTML = icon('quest');
   const feedbackSlot = document.getElementById('feedback-icon-slot');
   if (feedbackSlot) feedbackSlot.innerHTML = icon('feedback');
+  const statsSlot = document.getElementById('stats-icon-slot');
+  if (statsSlot) statsSlot.innerHTML = icon('chart');
   document.querySelectorAll('.grade-icon-slot').forEach((slot) => {
     slot.innerHTML = icon(slot.dataset.icon);
   });
@@ -297,6 +300,7 @@ function renderHome() {
       <span>📚 Soal latihan mandiri berbasis kurikulum nasional • Data progres tersimpan aman di perangkatmu</span>
       <div class="footer-actions">
         <button id="btn-open-feedback" class="btn btn-primary btn-sm">💬 Kritik &amp; Saran</button>
+        <a href="/statistik" class="btn btn-secondary btn-sm" style="text-decoration:none;">📊 Statistik &amp; Data</a>
         <button id="btn-open-info" class="btn btn-secondary btn-sm">ℹ️ Info Orang Tua &amp; Guru</button>
       </div>
     </footer>
@@ -466,6 +470,7 @@ function openFeedbackModal() {
       <div style="display:flex;gap:0.45rem;align-items:center;flex-wrap:wrap;">
         <span id="fb-stats" class="feedback-meta">Memuat...</span>
         <span id="fb-source-pill" class="feedback-source-pill">Terhubung</span>
+        <a href="/statistik" class="feedback-source-pill" style="text-decoration:none;">📊 Lihat Grafik &amp; Rekap</a>
       </div>
     </div>
     <div id="fb-list" class="feedback-list"></div>
@@ -565,11 +570,23 @@ function launchGame(gameId) {
   cleanupCurrentView();
   currentGameId = gameId;
 
+  const activeGrade = profile.grade;
+  trackGameplay({ eventType: 'game_start', gameId, grade: activeGrade });
+
   activeCleanup = game.mount(root, {
-    grade: profile.grade,
+    grade: activeGrade,
     onBack: () => renderHome(),
     onFinish: (result) => {
       const meta = recordGameResult(profile, result);
+      if (!result?.isStep) {
+        trackGameplay({
+          eventType: 'game_complete',
+          gameId: result?.gameId || gameId,
+          grade: result?.grade || activeGrade,
+          score: result?.score || 0,
+          xpEarned: result?.xpEarned || 0,
+        });
+      }
       syncTopbar();
       if (meta.leveledUp) {
         sfx.levelUp();

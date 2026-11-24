@@ -1,0 +1,47 @@
+name: Deploy Makin Cerdas Makin Sukses to Cloudflare Pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  verify-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Verify JavaScript syntax
+        run: |
+          node --check _worker.js
+          node --check src/app.js
+          node --check src/analytics.js
+          for f in src/utils/*.js src/games/*.js src/data/*.js; do
+            node --check "$f"
+          done
+
+      - name: Deploy to Cloudflare Pages (when CLOUDFLARE_API_TOKEN secret is set)
+        if: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: bff70217ad8eaa105a75b9980b52c618
+          command: pages deploy . --project-name=makincerdasmakinsukses --branch=main --commit-dirty=true
+
+      - name: Setup note when API token secret is missing
+        if: ${{ secrets.CLOUDFLARE_API_TOKEN == '' }}
+        run: |
+          {
+            echo "### Sinkronisasi GitHub ke Cloudflare Pages";
+            echo "Syntax check lolos. Untuk auto-deploy via GitHub Actions, tambahkan Repository Secret \`CLOUDFLARE_API_TOKEN\` atau hubungkan aplikasi GitHub di Dashboard Cloudflare Pages -> Settings -> Builds & deployments.";
+          } >> "$GITHUB_STEP_SUMMARY"
