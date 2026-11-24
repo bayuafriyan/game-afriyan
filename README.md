@@ -9,7 +9,7 @@
 
 ## 🎮 8 Pilihan Mode Game & Latihan
 
-1. **🌍 Bahasa Inggris, Jepang & Mandarin (3.150+ Kosakata)**: Dilengkapi filter per topik, latihan **Speaking** interaktif pakai mikrofon + audio native, **Writing** (kanvas tracing aksara Jepang/Mandarin & ejaan Inggris), **Kuis Kosakata** seimbang, **Dialog NPC** di tiap jenjang, dan **Kamus 3 Bahasa** dengan pencarian instan.
+1. **🌍 Bahasa Inggris, Jepang & Mandarin (3.150+ Kosakata & 270 Kalimat Grammar)**: Dilengkapi filter per topik, latihan **Speaking** interaktif pakai mikrofon + audio native, **Writing** (kanvas tracing aksara Jepang/Mandarin & ejaan Inggris), **Susun Kalimat & Grammar 2 Model** (susun blok kata & ketik langsung dalam bahasa asli maupun terjemahan EYD V), **Kuis Kosakata** seimbang, **Dialog NPC** di tiap jenjang, dan **Kamus 3 Bahasa** dengan pencarian instan.
 2. **🎯 Simulasi TKA & Ujian CBT**: Latihan ujian dengan timer, navigasi nomor soal, tombol tandai ragu, skor skala 0 hingga 100, serta pembahasan lengkap setiap nomor.
 3. **⚡ Cepat Tepat**: Kuis interaktif dengan filter semua mata pelajaran sesuai jenjang, bantuan *50:50*, *Bekukan Waktu*, *Lewati*, combo, dan pengacakan posisi jawaban A/B/C/D seimbang.
 4. **🚀 Meteor Hitung**: Game aksi Canvas 2D! Tembak jatuh meteor berisi soal matematika (aritmetika SD, aljabar/akar SMP, logaritma/turunan/matriks SMA) menggunakan laser.

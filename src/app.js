@@ -28,11 +28,11 @@ const GAMES = [
     id: 'language',
     featured: true,
     title: 'Bahasa Inggris, Jepang & Mandarin',
-    tag: 'Speaking & Writing',
+    tag: 'Speaking, Writing & Grammar',
     iconKey: 'language',
     accent: '#ec4899',
     bg: 'linear-gradient(135deg, #ec4899, #8b5cf6)',
-    desc: 'Latihan bicara pakai mikrofon, menulis aksara di kanvas, dan dialog NPC.',
+    desc: 'Latihan bicara pakai mikrofon, menulis aksara, susun kalimat grammar 2 model, dan dialog NPC.',
     mount: mountLanguageArena,
   },
   {

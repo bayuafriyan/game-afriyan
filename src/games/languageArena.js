@@ -1,5 +1,5 @@
 // Arena Bahasa Dunia: Inggris (CEFR), Jepang (JLPT), Mandarin (YCT/HSK)
-// 5 Mode Interaktif: Speaking (Mic), Writing (Kanvas & Ejaan), Kuis Kosakata, Dialog NPC, dan Kamus 3 Bahasa (3.150+ Kata)
+// 6 Mode Interaktif: Speaking, Writing, Susun Kalimat & Grammar 2 Model, Kuis Kosakata, Dialog NPC, dan Kamus 3 Bahasa
 
 import {
   LANG_META,
@@ -8,6 +8,14 @@ import {
   TOTAL_VOCAB_STATS,
   LANG_DIALOGUES,
 } from '../data/languageData.js';
+import {
+  SENTENCE_BANK,
+  SENTENCE_TOPICS,
+  TOTAL_SENTENCE_STATS,
+  joinTargetTokens,
+  evaluateTargetSentence,
+  evaluateIndoTranslation,
+} from '../data/sentenceData.js';
 import { speakNative, startListening, isSpeechRecognitionSupported, evaluateSpeech } from '../utils/speech.js';
 import { shuffleArray, prepareBalancedQuestions, escapeHtml } from '../utils/quizHelper.js';
 import { sfx } from '../utils/audio.js';
@@ -53,6 +61,15 @@ export function mountLanguageArena(container, ctx) {
   let quizMaxStreak = 0;
   let quizFinished = false;
 
+  // Sentence & Grammar state (2 models: 'target' ID -> Foreign, 'translate' Foreign -> ID)
+  let sentenceModel = 'target'; // 'target' | 'translate'
+  let sentenceInputMode = 'tiles'; // 'tiles' | 'type'
+  let sentencePool = [];
+  let sentenceSelectedPoolIdxs = [];
+  let sentenceTypedText = '';
+  let sentenceFeedback = null;
+  let sentenceRoundKey = '';
+
   let unmounted = false;
   let traceCleanup = null;
   let currentDialogOpts = null;
@@ -60,6 +77,7 @@ export function mountLanguageArena(container, ctx) {
   let selectedDialogOptIdx = null;
   let sessionCounted = false;
   const rewardedKeys = new Set();
+  const revealedSentenceKeys = new Set();
 
   const allConcepts = [...LANG_VOCAB.SD, ...LANG_VOCAB.SMP, ...LANG_VOCAB.SMA];
 
@@ -87,10 +105,50 @@ export function mountLanguageArena(container, ctx) {
   }
 
   function getTopicList() {
+    if (mode === 'sentence') {
+      return (SENTENCE_TOPICS[lang] && SENTENCE_TOPICS[lang][grade]) || [];
+    }
     if (mode === 'cards' && cardsScope === 'all') {
       return [...new Set(allConcepts.map((x) => x.topic))];
     }
     return LANG_TOPICS[grade] || [];
+  }
+
+  function getActiveSentenceList() {
+    const base = (SENTENCE_BANK[lang] && SENTENCE_BANK[lang][grade]) || SENTENCE_BANK.en.SD;
+    if (selectedTopic === 'Semua') return base;
+    const filtered = base.filter((x) => x.topic === selectedTopic);
+    return filtered.length > 0 ? filtered : base;
+  }
+
+  function prepareSentencePool(item) {
+    const key = `${lang}|${grade}|${item.id}|${sentenceModel}`;
+    if (sentenceRoundKey === key) return;
+    sentenceRoundKey = key;
+    sentenceSelectedPoolIdxs = [];
+    sentenceTypedText = '';
+    sentenceFeedback = null;
+
+    let rawTiles = [];
+    if (sentenceModel === 'target') {
+      const real = item.tokens.map((text, i) => ({
+        text,
+        hint: (item.tokenHints && item.tokenHints[i]) || '',
+      }));
+      const dist = (item.distractors || []).map((text, i) => ({
+        text,
+        hint: (item.distractorHints && item.distractorHints[i]) || '',
+      }));
+      rawTiles = [...real, ...dist];
+    } else {
+      const real = item.indoTokens.map((text) => ({ text, hint: '' }));
+      const dist = (item.indoDistractors || []).map((text) => ({ text, hint: '' }));
+      rawTiles = [...real, ...dist];
+    }
+    sentencePool = shuffleArray(rawTiles).map((tile, i) => ({
+      ...tile,
+      poolIdx: i,
+    }));
   }
 
   function getActiveVocabList() {
@@ -150,6 +208,8 @@ export function mountLanguageArena(container, ctx) {
     speakFeedback = null;
     dialogFeedback = null;
     writeFeedback = null;
+    sentenceFeedback = null;
+    sentenceRoundKey = '';
     currentDialogOpts = null;
     dialogSolved = false;
     selectedDialogOptIdx = null;
@@ -222,9 +282,16 @@ export function mountLanguageArena(container, ctx) {
 
   function renderHeader() {
     const meta = LANG_META[lang];
-    const baseList = getBaseVocabList();
+    const baseList =
+      mode === 'sentence'
+        ? (SENTENCE_BANK[lang] && SENTENCE_BANK[lang][grade]) || SENTENCE_BANK.en.SD
+        : getBaseVocabList();
     const topics = getTopicList();
     const showTopicBar = mode !== 'dialog';
+    const topicAllLabel =
+      mode === 'sentence'
+        ? `📂 Semua Topik Grammar (${baseList.length} kalimat)`
+        : `📂 Semua Topik (${baseList.length} kata)`;
 
     return `
       <div class="game-hud">
@@ -232,6 +299,7 @@ export function mountLanguageArena(container, ctx) {
           <button id="lg-back" class="btn btn-secondary btn-sm">← Kembali</button>
           <span class="hud-pill">${meta.flag} ${meta.name} (${meta.levelLabel[grade]})</span>
           <span class="hud-pill">📚 ${TOTAL_VOCAB_STATS.totalWords.toLocaleString('id-ID')}+ Kosakata</span>
+          <span class="hud-pill">🧩 ${TOTAL_SENTENCE_STATS.totalSentences} Kalimat Grammar</span>
         </div>
         <div class="hud-group">
           <button id="lg-toggle-guide" class="lifeline-btn">${showGuide ? '👁️ Bantuan: ON' : '🙈 Bantuan: OFF'}</button>
@@ -254,6 +322,7 @@ export function mountLanguageArena(container, ctx) {
       <div class="filter-row">
         <button class="filter-chip ${mode === 'speaking' ? 'active' : ''}" data-mode="speaking">🗣️ Speaking (Suara)</button>
         <button class="filter-chip ${mode === 'writing' ? 'active' : ''}" data-mode="writing">✍️ Writing (Menulis)</button>
+        <button class="filter-chip ${mode === 'sentence' ? 'active' : ''}" data-mode="sentence">🧩 Susun Kalimat & Grammar</button>
         <button class="filter-chip ${mode === 'quiz' ? 'active' : ''}" data-mode="quiz">⚡ Kuis Kosakata</button>
         <button class="filter-chip ${mode === 'dialog' ? 'active' : ''}" data-mode="dialog">💬 Dialog NPC</button>
         <button class="filter-chip ${mode === 'cards' ? 'active' : ''}" data-mode="cards">🎴 Kamus 3 Bahasa</button>
@@ -263,8 +332,8 @@ export function mountLanguageArena(container, ctx) {
         showTopicBar
           ? `
         <div class="lang-toolbar">
-          <select id="lg-topic" class="lang-topic-select" aria-label="Filter Topik Kosakata">
-            <option value="Semua" ${selectedTopic === 'Semua' ? 'selected' : ''}>📂 Semua Topik (${baseList.length} kata)</option>
+          <select id="lg-topic" class="lang-topic-select" aria-label="Filter Topik">
+            <option value="Semua" ${selectedTopic === 'Semua' ? 'selected' : ''}>${topicAllLabel}</option>
             ${topics
               .map((t) => {
                 const cnt = baseList.filter((x) => x.topic === t).length;
@@ -452,6 +521,197 @@ export function mountLanguageArena(container, ctx) {
         ${
           writeFeedback
             ? `<div class="explanation-box" style="margin-top:1rem;border-color:${writeFeedback.ok ? '#22c55e' : '#f59e0b'};"><p>${writeFeedback.msg}</p></div>`
+            : ''
+        }
+      </div>
+    `;
+  }
+
+  function renderSentenceBody() {
+    const list = getActiveSentenceList();
+    const sentPos = idx % list.length;
+    const item = list[sentPos];
+    const meta = LANG_META[lang];
+    prepareSentencePool(item);
+
+    const usedSet = new Set(sentenceSelectedPoolIdxs);
+    const chosenTokens = sentenceSelectedPoolIdxs.map((pIdx) => sentencePool[pIdx]);
+    const previewText =
+      sentenceModel === 'target'
+        ? joinTargetTokens(
+            lang,
+            chosenTokens.map((t) => t.text),
+            chosenTokens.length > 0 ? item.punct : '',
+          )
+        : chosenTokens.length > 0
+          ? chosenTokens.map((t) => t.text).join(' ') + item.indoPunct
+          : '';
+
+    const guideLine =
+      lang === 'ja'
+        ? `${item.reading} • ${item.romaji}`
+        : lang === 'zh'
+          ? item.pinyin
+          : '';
+
+    const typePlaceholder =
+      sentenceModel === 'translate'
+        ? 'Ketik terjemahan bahasa Indonesia sesuai kaidah EYD V...'
+        : lang === 'en'
+          ? 'Ketik kalimat bahasa Inggris lengkap sesuai rumus grammar...'
+          : lang === 'ja'
+            ? 'Ketik kalimat Jepang (Kanji/Kana atau Romaji seperti watashi wa...)...'
+            : 'Ketik kalimat Mandarin (Hanzi Sederhana atau Pinyin seperti wo shi...)...';
+
+    const typeHelpText =
+      sentenceModel === 'translate'
+        ? 'Terima variasi terjemahan baku yang akurat (contoh: saya / aku).'
+        : lang === 'ja'
+          ? 'Mendukung input Kanji/Kana maupun Romaji standar Hepburn!'
+          : lang === 'zh'
+            ? 'Mendukung input Hanzi Sederhana (简体字) maupun Pinyin (dengan atau tanpa tanda nada)!'
+            : 'Mendukung bentuk lengkap maupun kontraksi standar bahasa Inggris (misalnya do not / don\'t).';
+
+    return `
+      <div class="lang-panel">
+        <div class="lang-nav-row">
+          <span class="subject-badge">🧩 Kalimat ${sentPos + 1} / ${list.length} • ${escapeHtml(item.topic)} • ${escapeHtml(item.level)}</span>
+          <div style="display:flex;gap:0.45rem;flex-wrap:wrap;">
+            <button id="btn-prev-word" class="btn btn-secondary btn-sm">← Sebelumnya</button>
+            <button id="btn-rand-word" class="btn btn-amber btn-sm">🎲 Acak Kalimat</button>
+            <button id="btn-next-word" class="btn btn-secondary btn-sm">Berikutnya →</button>
+          </div>
+        </div>
+
+        <div class="sentence-model-bar" role="group" aria-label="Pilih Model Latihan Kalimat">
+          <button class="sentence-model-btn ${sentenceModel === 'target' ? 'active' : ''}" data-smodel="target">
+            <strong>🌐 Model 1: Bahasa Asli (ID ➔ ${escapeHtml(meta.name)})</strong>
+            <small>Susun atau tulis kalimat ${escapeHtml(meta.name)} sesuai grammar</small>
+          </button>
+          <button class="sentence-model-btn ${sentenceModel === 'translate' ? 'active' : ''}" data-smodel="translate">
+            <strong>🇮🇩 Model 2: Tulis Terjemahan (${escapeHtml(meta.name)} ➔ ID)</strong>
+            <small>Susun atau tulis arti bahasa Indonesia yang tepat</small>
+          </button>
+        </div>
+
+        <div class="sentence-prompt-card">
+          <div class="grammar-meta-row">
+            <span class="subject-badge">📐 ${escapeHtml(item.grammarTitle)}</span>
+            <span class="hud-pill">${escapeHtml(item.level)}</span>
+          </div>
+          ${showGuide ? `<div class="grammar-formula-pill">Pola: ${escapeHtml(item.grammarFormula)}</div>` : ''}
+
+          ${
+            sentenceModel === 'target'
+              ? `
+            <div class="sentence-prompt-main">"${escapeHtml(item.indo)}"</div>
+            <div class="sentence-prompt-guide">Buatlah kalimat di atas dalam <strong>${escapeHtml(meta.name)}</strong> dengan tata letak kata yang benar.</div>
+          `
+              : `
+            <div class="sentence-prompt-main">${escapeHtml(item.target)}</div>
+            ${showGuide && guideLine ? `<div class="sentence-prompt-guide">${escapeHtml(guideLine)}</div>` : ''}
+            <div class="sentence-prompt-audio">
+              <button id="btn-sent-speak" class="btn btn-primary btn-sm">🔊 Dengarkan Kalimat</button>
+              <button id="btn-sent-slow" class="btn btn-secondary btn-sm">🐢 Pelan</button>
+            </div>
+          `
+          }
+        </div>
+
+        <div class="sentence-input-toggle" role="group" aria-label="Metode Jawab Kalimat">
+          <button class="filter-chip ${sentenceInputMode === 'tiles' ? 'active' : ''}" data-sinput="tiles">🧩 Susun Blok Kata</button>
+          <button class="filter-chip ${sentenceInputMode === 'type' ? 'active' : ''}" data-sinput="type">⌨️ Ketik Kalimat Langsung</button>
+        </div>
+
+        ${
+          sentenceInputMode === 'tiles'
+            ? `
+          <div class="sentence-tray-wrap">
+            <div class="sentence-tray-label">
+              <span>Susunan Kalimatmu (Ketuk blok untuk melepas)</span>
+              <span>${chosenTokens.length} blok dipilih</span>
+            </div>
+            <div class="sentence-answer-tray">
+              ${
+                chosenTokens.length === 0
+                  ? `<span class="sentence-tray-placeholder">Ketuk blok kata di bawah secara berurutan untuk menyusun kalimat...</span>`
+                  : chosenTokens
+                      .map(
+                        (t, pos) => `
+                  <button type="button" class="word-tile in-tray" data-tray-pos="${pos}">
+                    <span class="tile-main">${escapeHtml(t.text)}</span>
+                    ${showGuide && sentenceModel === 'target' && t.hint ? `<small class="tile-sub">${escapeHtml(t.hint)}</small>` : ''}
+                  </button>
+                `,
+                      )
+                      .join('')
+              }
+            </div>
+            <div class="sentence-preview-line">
+              Pratinjau: <span>${previewText ? escapeHtml(previewText) : '...'}</span>
+            </div>
+          </div>
+
+          <div class="sentence-word-bank" aria-label="Pilihan Blok Kata">
+            ${sentencePool
+              .map((t) => {
+                const isPlaced = usedSet.has(t.poolIdx);
+                return `
+                  <button type="button" class="word-tile ${isPlaced ? 'placed' : ''}" data-pool-idx="${t.poolIdx}" ${isPlaced ? 'disabled' : ''}>
+                    <span class="tile-main">${escapeHtml(t.text)}</span>
+                    ${showGuide && sentenceModel === 'target' && t.hint ? `<small class="tile-sub">${escapeHtml(t.hint)}</small>` : ''}
+                  </button>
+                `;
+              })
+              .join('')}
+          </div>
+
+          <div class="sentence-actions-row">
+            <button type="button" id="btn-sent-undo" class="btn btn-secondary btn-sm" ${chosenTokens.length === 0 ? 'disabled' : ''}>↩️ Hapus 1 Kata</button>
+            <button type="button" id="btn-sent-clear" class="btn btn-secondary btn-sm" ${chosenTokens.length === 0 ? 'disabled' : ''}>🧹 Ulangi</button>
+            <button type="button" id="btn-sent-check-tiles" class="btn btn-success">✅ Periksa Kalimat</button>
+          </div>
+        `
+            : `
+          <form id="sentence-type-form" class="sentence-type-form">
+            <textarea id="sentence-type-input" class="text-input sentence-type-input" rows="2" placeholder="${escapeHtml(typePlaceholder)}" autocomplete="off" spellcheck="false">${escapeHtml(sentenceTypedText)}</textarea>
+            <p class="mic-note" style="margin-top:0;">💡 ${escapeHtml(typeHelpText)}</p>
+            <div class="sentence-actions-row">
+              <button type="button" id="btn-sent-type-clear" class="btn btn-secondary btn-sm">🧹 Bersihkan</button>
+              <button type="submit" class="btn btn-success">✅ Periksa Tulisan</button>
+            </div>
+          </form>
+        `
+        }
+
+        ${
+          sentenceFeedback
+            ? `
+          <div class="explanation-box" style="margin-top:1.1rem;border-color:${sentenceFeedback.ok ? '#22c55e' : sentenceFeedback.revealed ? '#f59e0b' : '#ef4444'};">
+            <p><strong>${sentenceFeedback.ok ? '🎉 Tepat Sekali!' : sentenceFeedback.revealed ? '📖 Kunci & Pembahasan Grammar' : '💡 Periksa Lagi Urutannya!'}</strong> ${escapeHtml(sentenceFeedback.msg)}</p>
+            ${
+              sentenceFeedback.ok || sentenceFeedback.revealed
+                ? `
+              <div class="grammar-exp-grid">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;flex-wrap:wrap;">
+                  <span><strong>${escapeHtml(meta.name)}:</strong> ${escapeHtml(item.target)}</span>
+                  <button type="button" id="btn-sent-exp-speak" class="mini-speak-btn" title="Putar Audio Kalimat">🔊</button>
+                </div>
+                ${guideLine ? `<div><strong>Bacaan / Pinyin:</strong> ${escapeHtml(guideLine)}</div>` : ''}
+                <div><strong>Arti Indonesia:</strong> ${escapeHtml(item.indo)}</div>
+                <div><strong>📐 ${escapeHtml(item.grammarTitle)}:</strong> ${escapeHtml(item.grammarFormula)} • ${escapeHtml(item.grammarNote)}</div>
+              </div>
+              <button type="button" id="btn-next-word-exp" class="btn btn-primary btn-sm">Kalimat Berikutnya →</button>
+            `
+                : `
+              <div class="grammar-exp-grid">
+                <div><strong>Petunjuk Pola:</strong> ${escapeHtml(item.grammarFormula)}</div>
+              </div>
+              <button type="button" id="btn-sent-reveal" class="btn btn-amber btn-sm">💡 Tampilkan Kunci & Pembahasan</button>
+            `
+            }
+          </div>
+        `
             : ''
         }
       </div>
@@ -820,11 +1080,13 @@ export function mountLanguageArena(container, ctx) {
         ? renderSpeakingBody()
         : mode === 'writing'
           ? renderWritingBody()
-          : mode === 'quiz'
-            ? renderQuizBody()
-            : mode === 'dialog'
-              ? renderDialogBody()
-              : renderCardsBody();
+          : mode === 'sentence'
+            ? renderSentenceBody()
+            : mode === 'quiz'
+              ? renderQuizBody()
+              : mode === 'dialog'
+                ? renderDialogBody()
+                : renderCardsBody();
 
     container.innerHTML = `
       <div class="game-shell">
@@ -858,6 +1120,7 @@ export function mountLanguageArena(container, ctx) {
         stopAudioAndMic();
         lang = btn.dataset.lang;
         idx = 0;
+        if (mode === 'sentence') selectedTopic = 'Semua';
         resetRoundFeedback();
         if (mode === 'quiz') buildVocabQuiz();
         render();
@@ -868,9 +1131,13 @@ export function mountLanguageArena(container, ctx) {
       chip.addEventListener('click', () => {
         sfx.click();
         stopAudioAndMic();
+        const prevMode = mode;
         mode = chip.dataset.mode;
         if (mode !== 'cards' && cardsScope === 'all') {
           cardsScope = 'grade';
+          selectedTopic = 'Semua';
+        }
+        if (prevMode === 'sentence' || mode === 'sentence') {
           selectedTopic = 'Semua';
         }
         idx = 0;
@@ -966,7 +1233,12 @@ export function mountLanguageArena(container, ctx) {
     const goPrev = () => {
       sfx.click();
       stopAudioAndMic();
-      const len = mode === 'dialog' ? getDialogList().length : list.length;
+      const len =
+        mode === 'sentence'
+          ? getActiveSentenceList().length
+          : mode === 'dialog'
+            ? getDialogList().length
+            : list.length;
       idx = (idx - 1 + len) % len;
       resetRoundFeedback();
       render();
@@ -986,14 +1258,213 @@ export function mountLanguageArena(container, ctx) {
       randBtn.addEventListener('click', () => {
         sfx.click();
         stopAudioAndMic();
-        if (list.length > 1) {
-          let nextIdx = Math.floor(Math.random() * list.length);
-          if (nextIdx === wordPos) nextIdx = (wordPos + 1) % list.length;
+        const navList = mode === 'sentence' ? getActiveSentenceList() : list;
+        const curPos = idx % navList.length;
+        if (navList.length > 1) {
+          let nextIdx = Math.floor(Math.random() * navList.length);
+          if (nextIdx === curPos) nextIdx = (curPos + 1) % navList.length;
           idx = nextIdx;
         }
         resetRoundFeedback();
         render();
       });
+    }
+
+    // Sentence & Grammar 2-Model Events
+    if (mode === 'sentence') {
+      const sentList = getActiveSentenceList();
+      const curSent = sentList[idx % sentList.length];
+      const rewardKey = `sentence_${sentenceModel}_${lang}_${curSent.id}`;
+
+      container.querySelectorAll('.sentence-model-btn[data-smodel]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          if (btn.dataset.smodel === sentenceModel) return;
+          sfx.click();
+          stopAudioAndMic();
+          sentenceModel = btn.dataset.smodel;
+          sentenceRoundKey = '';
+          sentenceFeedback = null;
+          render();
+        });
+      });
+
+      container.querySelectorAll('.filter-chip[data-sinput]').forEach((chip) => {
+        chip.addEventListener('click', () => {
+          if (chip.dataset.sinput === sentenceInputMode) return;
+          sfx.click();
+          sentenceInputMode = chip.dataset.sinput;
+          sentenceFeedback = null;
+          render();
+        });
+      });
+
+      const sentSpeak = container.querySelector('#btn-sent-speak');
+      if (sentSpeak) {
+        sentSpeak.addEventListener('click', () => speakNative(curSent.target, meta.speechLang, 0.92));
+      }
+
+      const sentSlow = container.querySelector('#btn-sent-slow');
+      if (sentSlow) {
+        sentSlow.addEventListener('click', () => speakNative(curSent.target, meta.speechLang, 0.65));
+      }
+
+      const sentExpSpeak = container.querySelector('#btn-sent-exp-speak');
+      if (sentExpSpeak) {
+        sentExpSpeak.addEventListener('click', () => speakNative(curSent.target, meta.speechLang, 0.9));
+      }
+
+      container.querySelectorAll('.word-tile[data-pool-idx]').forEach((tile) => {
+        tile.addEventListener('click', () => {
+          const pIdx = Number(tile.dataset.poolIdx);
+          if (sentenceSelectedPoolIdxs.includes(pIdx)) return;
+          sfx.flip();
+          sentenceSelectedPoolIdxs.push(pIdx);
+          if (sentenceFeedback && !sentenceFeedback.ok) sentenceFeedback = null;
+          render();
+        });
+      });
+
+      container.querySelectorAll('.word-tile[data-tray-pos]').forEach((tile) => {
+        tile.addEventListener('click', () => {
+          const pos = Number(tile.dataset.trayPos);
+          sfx.click();
+          sentenceSelectedPoolIdxs.splice(pos, 1);
+          if (sentenceFeedback && !sentenceFeedback.ok) sentenceFeedback = null;
+          render();
+        });
+      });
+
+      const undoBtn = container.querySelector('#btn-sent-undo');
+      if (undoBtn) {
+        undoBtn.addEventListener('click', () => {
+          if (sentenceSelectedPoolIdxs.length === 0) return;
+          sfx.click();
+          sentenceSelectedPoolIdxs.pop();
+          if (sentenceFeedback && !sentenceFeedback.ok) sentenceFeedback = null;
+          render();
+        });
+      }
+
+      const clearTilesBtn = container.querySelector('#btn-sent-clear');
+      if (clearTilesBtn) {
+        clearTilesBtn.addEventListener('click', () => {
+          sfx.flip();
+          sentenceSelectedPoolIdxs = [];
+          sentenceFeedback = null;
+          render();
+        });
+      }
+
+      const checkSentenceSubmission = (text, originEl) => {
+        if (!text.trim()) {
+          sfx.wrong();
+          sentenceFeedback = { ok: false, msg: 'Yuk susun atau ketik kalimatmu dulu sebelum diperiksa!' };
+          render();
+          return;
+        }
+        const ok =
+          sentenceModel === 'target'
+            ? evaluateTargetSentence(lang, text, curSent)
+            : evaluateIndoTranslation(text, curSent);
+
+        if (ok) {
+          if (revealedSentenceKeys.has(rewardKey)) {
+            sfx.correct(1);
+            sentenceFeedback = {
+              ok: true,
+              msg: 'Benar! Kalimatmu sekarang sudah tepat (kunci sempat dibuka pada soal ini).',
+            };
+          } else {
+            const rect = originEl ? originEl.getBoundingClientRect() : null;
+            const earned = tryAwardPoints(
+              rewardKey,
+              45,
+              rect ? rect.left + rect.width / 2 : window.innerWidth / 2,
+              rect ? rect.top + rect.height / 2 : window.innerHeight * 0.45,
+            );
+            sentenceFeedback = {
+              ok: true,
+              msg: earned
+                ? 'Struktur kalimat dan tata bahasamu akurat (+45 poin)!'
+                : 'Hebat! Susunan dan grammar tetap tepat!',
+            };
+          }
+        } else {
+          sfx.wrong();
+          sentenceFeedback = {
+            ok: false,
+            msg:
+              sentenceModel === 'target'
+                ? `Susunan atau ejaan belum tepat. Perhatikan urutan kata dan partikel pada pola ${meta.name}.`
+                : 'Terjemahan belum sesuai dengan arti atau struktur kalimat aslinya.',
+          };
+        }
+        render();
+      };
+
+      const checkTilesBtn = container.querySelector('#btn-sent-check-tiles');
+      if (checkTilesBtn) {
+        checkTilesBtn.addEventListener('click', () => {
+          if (sentenceSelectedPoolIdxs.length === 0) {
+            checkSentenceSubmission('', checkTilesBtn);
+            return;
+          }
+          const tokens = sentenceSelectedPoolIdxs.map((pIdx) => sentencePool[pIdx].text);
+          const assembled =
+            sentenceModel === 'target'
+              ? joinTargetTokens(lang, tokens, curSent.punct)
+              : tokens.join(' ') + curSent.indoPunct;
+          checkSentenceSubmission(assembled, checkTilesBtn);
+        });
+      }
+
+      const typeInput = container.querySelector('#sentence-type-input');
+      if (typeInput) {
+        typeInput.addEventListener('input', () => {
+          sentenceTypedText = typeInput.value;
+        });
+        typeInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            const form = container.querySelector('#sentence-type-form');
+            if (form) form.requestSubmit();
+          }
+        });
+      }
+
+      const typeClearBtn = container.querySelector('#btn-sent-type-clear');
+      if (typeClearBtn) {
+        typeClearBtn.addEventListener('click', () => {
+          sfx.flip();
+          sentenceTypedText = '';
+          sentenceFeedback = null;
+          render();
+        });
+      }
+
+      const typeForm = container.querySelector('#sentence-type-form');
+      if (typeForm) {
+        typeForm.addEventListener('submit', (e) => {
+          e.preventDefault();
+          const val = typeInput ? typeInput.value : sentenceTypedText;
+          sentenceTypedText = val;
+          checkSentenceSubmission(val, typeForm);
+        });
+      }
+
+      const revealBtn = container.querySelector('#btn-sent-reveal');
+      if (revealBtn) {
+        revealBtn.addEventListener('click', () => {
+          sfx.click();
+          revealedSentenceKeys.add(rewardKey);
+          sentenceFeedback = {
+            ok: false,
+            revealed: true,
+            msg: 'Pelajari pola susunan dan catatan tata bahasanya di bawah ini, lalu coba kalimat berikutnya.',
+          };
+          render();
+        });
+      }
     }
 
     const selfPass = container.querySelector('#btn-self-pass');
