@@ -360,6 +360,13 @@ export function mountMeteorMath(container, ctx) {
       g.globalAlpha = 1;
     }
 
+    g.save();
+    g.font = '700 12px Rubik, Fredoka, sans-serif';
+    g.fillStyle = 'rgba(255, 255, 255, 0.36)';
+    g.textAlign = 'right';
+    g.fillText('by afriiiyann', canvas.width - 14, canvas.height - 12);
+    g.restore();
+
     rafId = requestAnimationFrame(loop);
   }
 

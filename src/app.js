@@ -25,7 +25,6 @@ import { mountCategorySort } from './games/categorySort.js';
 import {
   FEEDBACK_ROLES,
   FEEDBACK_CATEGORIES,
-  fetchFeedback,
   sendFeedback,
 } from './utils/feedback.js';
 import { trackGameplay } from './utils/telemetry.js';
@@ -168,8 +167,6 @@ function hydrateStaticIcons() {
   document.getElementById('quest-icon-slot').innerHTML = icon('quest');
   const feedbackSlot = document.getElementById('feedback-icon-slot');
   if (feedbackSlot) feedbackSlot.innerHTML = icon('feedback');
-  const statsSlot = document.getElementById('stats-icon-slot');
-  if (statsSlot) statsSlot.innerHTML = icon('chart');
   document.querySelectorAll('.grade-icon-slot').forEach((slot) => {
     slot.innerHTML = icon(slot.dataset.icon);
   });
@@ -222,7 +219,10 @@ function renderHome() {
   root.innerHTML = `
     <section class="hero-banner">
       <div class="hero-left">
-        <div class="hero-badge">✨ ${gInfo.badge}</div>
+        <div class="hero-badge-row">
+          <div class="hero-badge">✨ ${gInfo.badge}</div>
+          <span class="creator-badge">✦ by <strong>afriiiyann</strong></span>
+        </div>
         <h1 class="hero-title">${gInfo.headline}</h1>
         <p class="hero-desc">${gInfo.tagline}</p>
         <div class="hero-actions">
@@ -297,10 +297,9 @@ function renderHome() {
     </section>
 
     <footer class="lobby-footer">
-      <span>📚 Soal latihan mandiri berbasis kurikulum nasional • Data progres tersimpan aman di perangkatmu</span>
+      <span>📚 Soal latihan mandiri kurikulum nasional • Data progres tersimpan aman di perangkatmu • Crafted by <strong>afriiiyann</strong></span>
       <div class="footer-actions">
         <button id="btn-open-feedback" class="btn btn-primary btn-sm">💬 Kritik &amp; Saran</button>
-        <a href="/statistik" class="btn btn-secondary btn-sm" style="text-decoration:none;">📊 Statistik &amp; Data</a>
         <button id="btn-open-info" class="btn btn-secondary btn-sm">ℹ️ Info Orang Tua &amp; Guru</button>
       </div>
     </footer>
@@ -345,61 +344,6 @@ function renderHome() {
   });
 }
 
-function formatFeedbackDate(isoStr) {
-  try {
-    return new Intl.DateTimeFormat('id-ID', {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    }).format(new Date(isoStr));
-  } catch {
-    return '';
-  }
-}
-
-function renderFeedbackList(container, items) {
-  container.replaceChildren();
-  if (!items || items.length === 0) {
-    const empty = document.createElement('p');
-    empty.className = 'feedback-meta';
-    empty.textContent = 'Belum ada masukan tersimpan. Jadilah yang pertama memberi saran!';
-    container.appendChild(empty);
-    return;
-  }
-
-  for (const item of items) {
-    const card = document.createElement('article');
-    card.className = 'feedback-item';
-
-    const top = document.createElement('div');
-    top.className = 'feedback-item-top';
-
-    const author = document.createElement('span');
-    author.className = 'feedback-author';
-    author.textContent = `${item.name || 'Sahabat Belajar'} (${item.role || 'Umum'})`;
-
-    const stars = document.createElement('span');
-    stars.className = 'feedback-stars';
-    const r = Math.min(5, Math.max(1, Number(item.rating) || 5));
-    stars.textContent = `${'★'.repeat(r)}${'☆'.repeat(5 - r)}`;
-
-    top.append(author, stars);
-
-    const meta = document.createElement('div');
-    meta.className = 'feedback-meta';
-    const formattedDate = formatFeedbackDate(item.created_at);
-    meta.textContent = formattedDate
-      ? `${item.category || 'Saran Fitur'} • ${formattedDate}`
-      : `${item.category || 'Saran Fitur'}`;
-
-    const body = document.createElement('p');
-    body.className = 'feedback-body';
-    body.textContent = String(item.message || '');
-
-    card.append(top, meta, body);
-    container.appendChild(card);
-  }
-}
-
 function openFeedbackModal() {
   const modalOpenedAt = Date.now();
   let selectedRating = 5;
@@ -412,7 +356,7 @@ function openFeedbackModal() {
 
     <div class="feedback-shield-banner">
       <span>${icon('shield')}</span>
-      <span>Masukanmu membantu kami meningkatkan kualitas materi soal, game, dan kenyamanan belajar. Jangan sertakan data pribadi sensitif atau tautan eksternal.</span>
+      <span>Masukanmu dikirim secara privat langsung kepada pengembang (tidak ditampilkan ke publik) untuk meningkatkan kualitas soal, game, dan kenyamanan belajar. Jangan sertakan data pribadi sensitif atau tautan URL.</span>
     </div>
 
     <form id="fb-form" class="feedback-form" novalidate>
@@ -464,16 +408,6 @@ function openFeedbackModal() {
 
       <button type="submit" id="fb-submit" class="btn btn-primary">Kirim Kritik &amp; Saran</button>
     </form>
-
-    <div class="feedback-list-head">
-      <strong style="font-size:0.94rem;">Masukan Terbaru</strong>
-      <div style="display:flex;gap:0.45rem;align-items:center;flex-wrap:wrap;">
-        <span id="fb-stats" class="feedback-meta">Memuat...</span>
-        <span id="fb-source-pill" class="feedback-source-pill">Terhubung</span>
-        <a href="/statistik" class="feedback-source-pill" style="text-decoration:none;">📊 Lihat Grafik &amp; Rekap</a>
-      </div>
-    </div>
-    <div id="fb-list" class="feedback-list"></div>
   `);
 
   modalContent.querySelector('#m-close').addEventListener('click', closeModal);
@@ -505,18 +439,6 @@ function openFeedbackModal() {
     alertEl.textContent = text;
     alertEl.classList.remove('hidden');
   };
-
-  const listEl = modalContent.querySelector('#fb-list');
-  const statsEl = modalContent.querySelector('#fb-stats');
-  const sourcePillEl = modalContent.querySelector('#fb-source-pill');
-
-  const refreshList = async () => {
-    const res = await fetchFeedback(12);
-    sourcePillEl.textContent = res.source === 'server' ? 'Database Server' : 'Offline Lokal';
-    statsEl.textContent = `${res.stats?.total || 0} masukan • ★ ${res.stats?.avgRating || 0}`;
-    renderFeedbackList(listEl, res.items);
-  };
-  refreshList();
 
   const formEl = modalContent.querySelector('#fb-form');
   const submitBtn = modalContent.querySelector('#fb-submit');
@@ -551,16 +473,15 @@ function openFeedbackModal() {
     setAlert(
       'success',
       result.source === 'server'
-        ? 'Terima kasih! Kritik dan saran kamu berhasil tersimpan di server.'
+        ? 'Terima kasih! Kritik dan saran kamu terkirim privat ke pengembang.'
         : 'Tersimpan secara lokal di perangkat (mode offline).'
     );
     showToast(
       '💬',
       result.source === 'server'
-        ? 'Kritik & saran terkirim ke server!'
+        ? 'Kritik & saran terkirim!'
         : 'Kritik & saran tersimpan lokal.'
     );
-    await refreshList();
   });
 }
 
@@ -603,7 +524,7 @@ function launchGame(gameId) {
 
 // Modals
 function openModal(html) {
-  modalContent.innerHTML = html;
+  modalContent.innerHTML = `${html}<div class="modal-watermark" aria-hidden="true">✦ Makin Cerdas Makin Sukses • by afriiiyann</div>`;
   modalBackdrop.classList.remove('hidden');
 }
 

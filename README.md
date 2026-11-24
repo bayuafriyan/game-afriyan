@@ -1,9 +1,8 @@
-# 🎓 Makin Cerdas Makin Sukses | Arena Game Edukasi (SD, SMP & SMA)
+# 🎓 Makin Cerdas Makin Sukses | Arena Game Edukasi (SD, SMP & SMA) | by afriiiyann
 
-**Makin Cerdas Makin Sukses** adalah platform game edukasi dan latihan ujian berbasis web untuk pelajar **SD, SMP, hingga SMA/MA/SMK sederajat**. Mencakup materi **Kurikulum Merdeka**, **Kurikulum 2013 (K13)**, latihan **TKA**, **ANBK**, **Ujian Sekolah**, **UTBK-SNBT**, **Arena 3 Bahasa (Inggris CEFR, Jepang JLPT, Mandarin YCT/HSK dengan 3.150+ kosakata terverifikasi / 1.053 konsep × 3 bahasa)** lengkap dengan animasi adaptif per jenjang, **Studio Musik (Custom & Rekomendasi)**, fitur **Kritik & Saran**, serta **Dashboard Visualisasi Trafik & Masukan** di Cloudflare Pages.
+**Makin Cerdas Makin Sukses** (*Crafted by afriiiyann*) adalah platform game edukasi dan latihan ujian berbasis web untuk pelajar **SD, SMP, hingga SMA/MA/SMK sederajat**. Mencakup materi **Kurikulum Merdeka**, **Kurikulum 2013 (K13)**, latihan **TKA**, **ANBK**, **Ujian Sekolah**, **UTBK-SNBT**, **Arena 3 Bahasa (Inggris CEFR, Jepang JLPT, Mandarin YCT/HSK dengan 3.150+ kosakata terverifikasi / 1.053 konsep × 3 bahasa)** lengkap dengan animasi adaptif per jenjang, **Studio Musik (Custom & Rekomendasi)**, serta form **Kritik & Saran** privat ke database pengembang.
 
 👉 **Mainkan Langsung (Cloudflare Pages HTTPS)**: https://makincerdasmakinsukses.pages.dev/
-👉 **Dashboard Visualisasi Trafik & Kritik Saran**: https://makincerdasmakinsukses.pages.dev/statistik
 👉 **Repositori GitHub**: https://github.com/bayuafriyan/game-afriyan
 👉 **Mirror GitHub Pages**: https://bayuafriyan.github.io/game-afriyan/
 
@@ -22,19 +21,11 @@
 
 ---
 
-## 📊 Dashboard Visualisasi Trafik & Kritik Saran (`/statistik`)
+## 📊 Analitik Trafik & Kritik Saran (Privat di Cloudflare Dashboard)
 
-- **Cloudflare Web Analytics + D1 Telemetry**: Halaman utama dan arena game merekam kunjungan harian, pengunjung unik (ter-hash SHA-256 harian tanpa menyimpan IP asli), perangkat (Mobile/Desktop), negara, serta jumlah ronde game dimulai/diselesaikan beserta skornya ke database **Cloudflare D1 (`makincerdasmakinsukses-db`)**.
-- **Visualisasi Grafik Interaktif**: Tersedia langsung di **`/statistik`** (atau tombol ikon grafik 📊 di bilah atas aplikasi) berisi kartu KPI utama, grafik batang tren 14 hari terakhir, grafik popularitas 8 mode game, grafik donut jenjang `SD`/`SMP`/`SMA` & perangkat, distribusi bintang rating & kategori kritik/saran, daftar filterable kritik & saran terbaru, aktivitas permainan terbaru, serta tombol unduh CSV.
-- **Integrasi Repositori GitHub**: Root proyek (`_worker.js`, `_routes.json`, `_headers`) sudah siap untuk build otomatis Cloudflare Pages dari `bayuafriyan/game-afriyan` branch `main`, disertai workflow [`.github/workflows/cloudflare-pages.yml`](.github/workflows/cloudflare-pages.yml).
-
----
-
-## 💬 Fitur Kritik & Saran
-
-- Tersedia langsung lewat tombol **💬 Kritik & Saran** di bilah atas (*topbar*) maupun bagian bawah beranda.
-- Pengunjung (Siswa, Orang Tua, Guru, maupun Umum) dapat memilih peran, kategori masukan, penilaian 1 sampai 5 bintang, dan melihat masukan terbaru.
-- Terhubung langsung ke database **Cloudflare D1 (`makincerdasmakinsukses-db`)** melalui `/api/feedback`, serta tetap berfungsi dengan cadangan `localStorage` jika dibuka secara offline.
+- **Trafik & Grafik Web Analytics Privat**: Terhubung langsung ke **Cloudflare Web Analytics** (`makincerdasmakinsukses.pages.dev`) serta tabel **Cloudflare D1 (`makincerdasmakinsukses-db`)** untuk memantau pengunjung unik, jumlah halaman dibuka, perangkat (HP/Desktop), negara, sesi permainan, serta kotak masuk **Kritik & Saran**.
+- **Tidak Diekspos ke Publik**: Data statistik dan daftar masukan bersifat **kirim-saja (*write-only*)** dari browser pengunjung (`POST /api/feedback` dan `POST /api/telemetry`). Semua rute baca publik (`/api/dashboard`, `GET /api/feedback`, `/statistik`) ditutup agar data hanya bisa dilihat pemilik lewat dashboard **Cloudflare (Web Analytics & D1 Views: `v_ringkasan_utama`, `v_rekap_game_populer`, `v_tren_harian`, `v_kotak_masuk_kritik_saran`)**.
+- **Sinkronisasi GitHub**: Root proyek (`_worker.js`, `_routes.json`, `_headers`) siap untuk build Cloudflare Pages dari `bayuafriyan/game-afriyan` branch `main`, disertai workflow [`.github/workflows/cloudflare-pages.yml`](.github/workflows/cloudflare-pages.yml).
 
 ---
 
@@ -59,6 +50,6 @@
 
 - **Enkripsi & Redirect HTTPS**: Seluruh lalu lintas wajib menggunakan HTTPS dengan header HSTS (`preload`), sertifikat TLS modern agar aman dibuka di Chrome Android, iOS, maupun desktop.
 - **Header Pertahanan Browser**: Mengirim `Content-Security-Policy` ketat (`script-src 'self' https://static.cloudflareinsights.com`, `connect-src 'self' https://cloudflareinsights.com https://*.cloudflareinsights.com`, `object-src 'none'`, `frame-ancestors 'none'`), `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Cross-Origin-Opener-Policy: same-origin`, dan `Cross-Origin-Resource-Policy: same-origin`.
-- **Proteksi Sisi Server (`_worker.js`)**: Memblokir pemindaian path sensitif (`/.env`, `/.git`, `/.github`, `/_worker.js`, `/_routes.json`, `/_headers`, `/wp-login.php`, ekstensi skrip server), membatasi metode HTTP (`405`), menegakkan proteksi CSRF (`Origin` & `Sec-Fetch-Site`), batas muatan `4 KB` (`413` feedback) / `1 KB` (telemetry), honeypot & jeda interaksi anti-bot, deduplikasi, query parameterized D1 anti-SQLi, serta rate-limit IP ter-hash SHA-256 harian.
-- **Sanitasi Sisi Klien**: Proteksi anti-XSS berbasis DOM `textContent` di seluruh toast, daftar masukan, dan dashboard grafik SVG, sanitasi data `localStorage` (`sanitizeProfile`), pembatas level anti-DoS, proteksi formula CSV export, serta pemblokiran tautan HTTP polos dan IP privat/SSRF pada pemutar URL musik.
+- **Proteksi Sisi Server (`_worker.js`)**: Memblokir akses rute internal & path sensitif (`/.env`, `/.git`, `/.github`, `/_worker.js`, `/_routes.json`, `/_headers`, `/statistik`, `/dashboard`, `/analytics`, `/wp-login.php`), membatasi metode HTTP (`405`), menegakkan proteksi CSRF (`Origin` & `Sec-Fetch-Site`), batas muatan `4 KB` (`413` feedback) / `1 KB` (telemetry), honeypot & jeda interaksi anti-bot, deduplikasi, query parameterized D1 anti-SQLi, serta rate-limit IP ter-hash SHA-256 harian.
+- **Sanitasi Sisi Klien**: Proteksi anti-XSS berbasis DOM `textContent`, sanitasi data `localStorage` (`sanitizeProfile`), pembatas level anti-DoS, serta pemblokiran tautan HTTP polos dan IP privat/SSRF pada pemutar URL musik.
 - **Soal Latihan Mandiri**: Seluruh soal latihan TKA, ANBK, Ujian Sekolah, dan UTBK adalah materi latihan edukatif yang mengacu pada kisi-kisi kurikulum nasional, bukan naskah soal resmi pemerintah.

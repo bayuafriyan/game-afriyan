@@ -61,45 +61,6 @@ function writeLocalFeedback(items) {
   }
 }
 
-function computeStats(items) {
-  const total = items.length;
-  if (!total) return { total: 0, avgRating: 0 };
-  const sum = items.reduce((acc, item) => acc + Number(item.rating || 0), 0);
-  return { total, avgRating: Number((sum / total).toFixed(2)) };
-}
-
-export async function fetchFeedback(limit = 12) {
-  const safeLimit = Number.isFinite(limit) ? Math.min(20, Math.max(1, Math.floor(limit))) : 12;
-  if (typeof window !== 'undefined' && window.location?.protocol === 'file:') {
-    const localItems = readLocalFeedback().slice(0, safeLimit);
-    return { source: 'local', items: localItems, stats: computeStats(localItems) };
-  }
-
-  try {
-    const res = await fetch(`/api/feedback?limit=${safeLimit}`, {
-      method: 'GET',
-      credentials: 'same-origin',
-      headers: { Accept: 'application/json' },
-    });
-    const contentType = (res.headers.get('Content-Type') || '').toLowerCase();
-    if (res.ok && contentType.includes('application/json')) {
-      const data = await res.json();
-      if (data && data.ok && Array.isArray(data.items)) {
-        return {
-          source: 'server',
-          items: data.items,
-          stats: data.stats || computeStats(data.items),
-        };
-      }
-    }
-  } catch {
-    // Network unreachable: fallback below
-  }
-
-  const localItems = readLocalFeedback().slice(0, safeLimit);
-  return { source: 'local', items: localItems, stats: computeStats(localItems) };
-}
-
 export async function sendFeedback(payload) {
   const rawName = sanitizeText(payload?.name, false);
   const name = rawName === '' ? 'Sahabat Belajar' : rawName;

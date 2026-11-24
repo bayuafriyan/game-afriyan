@@ -63,6 +63,10 @@ const SECURITY_HEADERS = {
 };
 
 const BLOCKED_PATH_PREFIXES = [
+  '/statistik',
+  '/dashboard',
+  '/analytics',
+  '/analytics.html',
   '/_worker.js',
   '/_routes.json',
   '/_headers',
@@ -375,33 +379,6 @@ async function recordPageView(request, env) {
   }
 }
 
-async function handleGetFeedback(request, env, url) {
-  if (!env.DB) {
-    return jsonResponse({ ok: false, error: 'Layanan database belum siap.' }, 503);
-  }
-  const rawLimit = Number(url.searchParams.get('limit') || '12');
-  const limit = Number.isFinite(rawLimit) ? Math.min(20, Math.max(1, Math.floor(rawLimit))) : 12;
-
-  const listResult = await env.DB.prepare(
-    'SELECT id, name, role, category, rating, message, created_at FROM feedback ORDER BY id DESC LIMIT ?'
-  )
-    .bind(limit)
-    .all();
-
-  const statsRow = await env.DB.prepare(
-    'SELECT COUNT(*) AS total, COALESCE(AVG(rating), 0) AS avg_rating FROM feedback'
-  ).first();
-
-  return jsonResponse({
-    ok: true,
-    items: listResult?.results || [],
-    stats: {
-      total: Number(statsRow?.total || 0),
-      avgRating: Number(Number(statsRow?.avg_rating || 0).toFixed(2)),
-    },
-  });
-}
-
 async function handlePostFeedback(request, env, url) {
   if (!env.DB) {
     return jsonResponse({ ok: false, error: 'Layanan database belum siap.' }, 503);
@@ -578,210 +555,6 @@ async function handlePostTelemetry(request, env, url) {
   return jsonResponse({ ok: true, id: Number(inserted?.id || 0) }, 201);
 }
 
-async function handleGetDashboard(env) {
-  if (!env.DB) {
-    return jsonResponse({ ok: false, error: 'Layanan database belum siap.' }, 503);
-  }
-
-  const now = new Date();
-  const todayDay = now.toISOString().slice(0, 10);
-  const days14 = [];
-  for (let offset = 13; offset >= 0; offset--) {
-    const dt = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - offset));
-    days14.push(dt.toISOString().slice(0, 10));
-  }
-  const cutoff14 = days14[0];
-
-  const [
-    trafficTotals,
-    todayTraffic,
-    feedbackStats,
-    dailyTrafficRes,
-    dailyFeedbackRes,
-    gamesRes,
-    gradesRes,
-    countriesRes,
-    ratingRes,
-    categoryRes,
-    roleRes,
-    feedbackItemsRes,
-    recentPlaysRes,
-  ] = await Promise.all([
-    env.DB.prepare(
-      'SELECT ' +
-        'COALESCE(SUM(page_views), 0) AS total_page_views, ' +
-        'COALESCE(SUM(unique_visitors), 0) AS total_unique_visitors, ' +
-        'COALESCE(SUM(game_starts), 0) AS total_game_starts, ' +
-        'COALESCE(SUM(game_completions), 0) AS total_game_completions, ' +
-        'COALESCE(SUM(mobile_hits), 0) AS mobile_hits, ' +
-        'COALESCE(SUM(desktop_hits), 0) AS desktop_hits ' +
-        'FROM traffic_daily'
-    ).first(),
-    env.DB.prepare(
-      'SELECT COALESCE(page_views, 0) AS page_views, COALESCE(unique_visitors, 0) AS unique_visitors ' +
-        'FROM traffic_daily WHERE day = ?'
-    )
-      .bind(todayDay)
-      .first(),
-    env.DB.prepare(
-      'SELECT COUNT(*) AS total, COALESCE(AVG(rating), 0) AS avg_rating FROM feedback'
-    ).first(),
-    env.DB.prepare(
-      'SELECT day, page_views, unique_visitors, game_starts, game_completions ' +
-        'FROM traffic_daily WHERE day >= ? ORDER BY day ASC'
-    )
-      .bind(cutoff14)
-      .all(),
-    env.DB.prepare(
-      'SELECT substr(created_at, 1, 10) AS day, COUNT(*) AS cnt ' +
-        'FROM feedback WHERE substr(created_at, 1, 10) >= ? GROUP BY substr(created_at, 1, 10)'
-    )
-      .bind(cutoff14)
-      .all(),
-    env.DB.prepare(
-      'SELECT game_id, ' +
-        "SUM(CASE WHEN event_type = 'game_start' THEN 1 ELSE 0 END) AS starts, " +
-        "SUM(CASE WHEN event_type = 'game_complete' THEN 1 ELSE 0 END) AS completions, " +
-        "COALESCE(AVG(CASE WHEN event_type = 'game_complete' THEN score ELSE NULL END), 0) AS avg_score, " +
-        "COALESCE(MAX(CASE WHEN event_type = 'game_complete' THEN score ELSE 0 END), 0) AS max_score, " +
-        "COALESCE(SUM(CASE WHEN event_type = 'game_complete' THEN xp_earned ELSE 0 END), 0) AS total_xp " +
-        'FROM gameplay_events GROUP BY game_id'
-    ).all(),
-    env.DB.prepare('SELECT grade, COUNT(*) AS cnt FROM gameplay_events GROUP BY grade').all(),
-    env.DB.prepare(
-      'SELECT country, COUNT(*) AS visitors, COALESCE(SUM(hits), 0) AS hits ' +
-        'FROM visitor_daily GROUP BY country ORDER BY visitors DESC, hits DESC LIMIT 8'
-    ).all(),
-    env.DB.prepare('SELECT rating, COUNT(*) AS cnt FROM feedback GROUP BY rating').all(),
-    env.DB.prepare(
-      'SELECT category, COUNT(*) AS cnt FROM feedback GROUP BY category ORDER BY cnt DESC'
-    ).all(),
-    env.DB.prepare(
-      'SELECT role, COUNT(*) AS cnt FROM feedback GROUP BY role ORDER BY cnt DESC'
-    ).all(),
-    env.DB.prepare(
-      'SELECT id, name, role, category, rating, message, created_at ' +
-        'FROM feedback ORDER BY id DESC LIMIT 50'
-    ).all(),
-    env.DB.prepare(
-      'SELECT id, event_type, game_id, grade, score, xp_earned, device, country, created_at ' +
-        'FROM gameplay_events ORDER BY id DESC LIMIT 20'
-    ).all(),
-  ]);
-
-  const trafficMap = new Map((dailyTrafficRes?.results || []).map((r) => [r.day, r]));
-  const feedbackDayMap = new Map(
-    (dailyFeedbackRes?.results || []).map((r) => [r.day, Number(r.cnt || 0)])
-  );
-
-  const dailyTrend = days14.map((day) => {
-    const t = trafficMap.get(day);
-    return {
-      day,
-      pageViews: Number(t?.page_views || 0),
-      uniqueVisitors: Number(t?.unique_visitors || 0),
-      gameStarts: Number(t?.game_starts || 0),
-      gameCompletions: Number(t?.game_completions || 0),
-      feedbackCount: feedbackDayMap.get(day) || 0,
-    };
-  });
-
-  const gamesMap = new Map((gamesRes?.results || []).map((r) => [r.game_id, r]));
-  const gamesBreakdown = ALL_GAME_IDS.map((gameId) => {
-    const row = gamesMap.get(gameId);
-    return {
-      gameId,
-      starts: Number(row?.starts || 0),
-      completions: Number(row?.completions || 0),
-      avgScore: Number(Number(row?.avg_score || 0).toFixed(1)),
-      maxScore: Number(row?.max_score || 0),
-      totalXp: Number(row?.total_xp || 0),
-    };
-  });
-
-  const gradesBreakdown = { SD: 0, SMP: 0, SMA: 0 };
-  for (const row of gradesRes?.results || []) {
-    if (Object.prototype.hasOwnProperty.call(gradesBreakdown, row.grade)) {
-      gradesBreakdown[row.grade] = Number(row.cnt || 0);
-    }
-  }
-
-  const byRating = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-  for (const row of ratingRes?.results || []) {
-    const key = Number(row.rating);
-    if (key >= 1 && key <= 5) {
-      byRating[key] = Number(row.cnt || 0);
-    }
-  }
-
-  return jsonResponse({
-    ok: true,
-    summary: {
-      totalUniqueVisitors: Number(trafficTotals?.total_unique_visitors || 0),
-      todayUniqueVisitors: Number(todayTraffic?.unique_visitors || 0),
-      totalPageViews: Number(trafficTotals?.total_page_views || 0),
-      todayPageViews: Number(todayTraffic?.page_views || 0),
-      totalGameStarts: Number(trafficTotals?.total_game_starts || 0),
-      totalGameCompletions: Number(trafficTotals?.total_game_completions || 0),
-      mobileHits: Number(trafficTotals?.mobile_hits || 0),
-      desktopHits: Number(trafficTotals?.desktop_hits || 0),
-      totalFeedback: Number(feedbackStats?.total || 0),
-      avgRating: Number(Number(feedbackStats?.avg_rating || 0).toFixed(2)),
-    },
-    dailyTrend,
-    gamesBreakdown,
-    gradesBreakdown,
-    countriesBreakdown: (countriesRes?.results || []).map((c) => ({
-      country: c.country || 'ID',
-      visitors: Number(c.visitors || 0),
-      hits: Number(c.hits || 0),
-    })),
-    feedbackBreakdown: {
-      byRating,
-      byCategory: (categoryRes?.results || []).map((c) => ({
-        category: c.category,
-        count: Number(c.cnt || 0),
-      })),
-      byRole: (roleRes?.results || []).map((r) => ({
-        role: r.role,
-        count: Number(r.cnt || 0),
-      })),
-    },
-    feedbackItems: feedbackItemsRes?.results || [],
-    recentPlays: recentPlaysRes?.results || [],
-    meta: {
-      repoUrl: 'https://github.com/bayuafriyan/game-afriyan',
-      domain: 'https://makincerdasmakinsukses.pages.dev',
-      generatedAt: now.toISOString(),
-    },
-  });
-}
-
-async function fetchStaticAssetWithPrettyHtmlFallback(request, env, url) {
-  let assetRequest = request;
-  if (url.pathname === '/statistik' || url.pathname === '/dashboard') {
-    const analyticsUrl = new URL('/analytics.html', url.origin);
-    assetRequest = new Request(analyticsUrl.toString(), request);
-  }
-  let assetResponse = await env.ASSETS.fetch(assetRequest);
-
-  // Follow internal Pages pretty-URL redirect (e.g. /analytics.html -> /analytics) cleanly
-  if (
-    (url.pathname === '/statistik' || url.pathname === '/dashboard') &&
-    assetResponse.status >= 300 &&
-    assetResponse.status < 400
-  ) {
-    const loc = assetResponse.headers.get('Location');
-    if (loc) {
-      const nextUrl = new URL(loc, url.origin);
-      if (nextUrl.origin === url.origin) {
-        assetResponse = await env.ASSETS.fetch(new Request(nextUrl.toString(), request));
-      }
-    }
-  }
-  return assetResponse;
-}
-
 export default {
   async fetch(request, env, ctx) {
     let url;
@@ -808,15 +581,8 @@ export default {
       return textResponse('Forbidden', 403);
     }
 
-    // 3. API endpoints
+    // 3. Write-only API endpoints (analytics & feedback reads stay private in Cloudflare)
     if (url.pathname === '/api/feedback') {
-      if (request.method === 'GET') {
-        try {
-          return await handleGetFeedback(request, env, url);
-        } catch {
-          return jsonResponse({ ok: false, error: 'Gagal memuat daftar masukan.' }, 500);
-        }
-      }
       if (request.method === 'POST') {
         try {
           return await handlePostFeedback(request, env, url);
@@ -827,7 +593,7 @@ export default {
       return jsonResponse(
         { ok: false, error: 'Metode HTTP tidak diizinkan.' },
         405,
-        { Allow: 'GET, POST' }
+        { Allow: 'POST' }
       );
     }
 
@@ -843,21 +609,6 @@ export default {
         { ok: false, error: 'Metode HTTP tidak diizinkan.' },
         405,
         { Allow: 'POST' }
-      );
-    }
-
-    if (url.pathname === '/api/dashboard') {
-      if (request.method === 'GET') {
-        try {
-          return await handleGetDashboard(env);
-        } catch {
-          return jsonResponse({ ok: false, error: 'Gagal memuat data analitik.' }, 500);
-        }
-      }
-      return jsonResponse(
-        { ok: false, error: 'Metode HTTP tidak diizinkan.' },
-        405,
-        { Allow: 'GET' }
       );
     }
 
@@ -884,12 +635,9 @@ export default {
       }
     }
 
-    const assetResponse = await fetchStaticAssetWithPrettyHtmlFallback(request, env, url);
+    const assetResponse = await env.ASSETS.fetch(request);
     const wrappedHeaders = new Headers(assetResponse.headers);
     applySecurityHeaders(wrappedHeaders, false);
-    if (url.pathname === '/statistik' || url.pathname === '/dashboard' || url.pathname === '/analytics.html') {
-      wrappedHeaders.set('Cache-Control', 'no-cache');
-    }
     return new Response(assetResponse.body, {
       status: assetResponse.status,
       statusText: assetResponse.statusText,
