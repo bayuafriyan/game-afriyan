@@ -2,15 +2,7 @@
 import { QUIZ_BANK, TKA_SUBJECTS } from '../data/questions.js';
 import { sfx } from '../utils/audio.js';
 import { fx } from '../utils/particles.js';
-
-function shuffle(arr) {
-  const c = [...arr];
-  for (let i = c.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [c[i], c[j]] = [c[j], c[i]];
-  }
-  return c;
-}
+import { prepareBalancedQuestions } from '../utils/quizHelper.js';
 
 export function mountTkaExam(container, ctx) {
   const { grade, onFinish, onBack } = ctx;
@@ -51,7 +43,7 @@ export function mountTkaExam(container, ctx) {
         ? all.filter((q) => q.isTka || tkaAllowed.includes(q.subject))
         : all;
 
-    questions = shuffle(pool).slice(0, Math.min(12, pool.length));
+    questions = prepareBalancedQuestions(pool, Math.min(12, pool.length));
     secondsLeft = questions.length * 45; // 45 detik per soal
 
     renderExam();

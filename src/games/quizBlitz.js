@@ -2,15 +2,7 @@
 import { QUIZ_BANK, SUBJECT_LIST } from '../data/questions.js';
 import { sfx } from '../utils/audio.js';
 import { fx } from '../utils/particles.js';
-
-function shuffle(arr) {
-  const copy = [...arr];
-  for (let i = copy.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [copy[i], copy[j]] = [copy[j], copy[i]];
-  }
-  return copy;
-}
+import { shuffleArray as shuffle, prepareBalancedQuestions } from '../utils/quizHelper.js';
 
 export function mountQuizBlitz(container, ctx) {
   const { grade, onFinish, onBack } = ctx;
@@ -42,7 +34,8 @@ export function mountQuizBlitz(container, ctx) {
     selectedSubject = subject;
     const pool = QUIZ_BANK[grade] || QUIZ_BANK.SD;
     const filtered = subject === 'Semua' ? pool : pool.filter((q) => q.subject === subject);
-    questions = shuffle(filtered.length > 0 ? filtered : pool).slice(0, Math.min(10, filtered.length || pool.length));
+    const activePool = filtered.length > 0 ? filtered : pool;
+    questions = prepareBalancedQuestions(activePool, Math.min(10, activePool.length));
     index = 0;
     score = 0;
     streak = 0;
