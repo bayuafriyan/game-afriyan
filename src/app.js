@@ -13,6 +13,7 @@ import {
   hasClaimableQuests,
 } from './utils/storage.js';
 
+import { mountLanguageArena } from './games/languageArena.js';
 import { mountTkaExam } from './games/tkaExam.js';
 import { mountQuizBlitz } from './games/quizBlitz.js';
 import { mountMeteorMath } from './games/meteorMath.js';
@@ -22,6 +23,17 @@ import { mountTrueFalse } from './games/trueFalse.js';
 import { mountCategorySort } from './games/categorySort.js';
 
 const GAMES = [
+  {
+    id: 'language',
+    featured: true,
+    title: 'Bahasa Inggris, Jepang & Mandarin',
+    tag: 'Speaking & Writing',
+    iconKey: 'language',
+    accent: '#ec4899',
+    bg: 'linear-gradient(135deg, #ec4899, #8b5cf6)',
+    desc: 'Latihan bicara pakai mikrofon, menulis aksara di kanvas, dan dialog NPC.',
+    mount: mountLanguageArena,
+  },
   {
     id: 'tka',
     featured: true,
@@ -199,6 +211,7 @@ function renderHome() {
         <h1 class="hero-title">${gInfo.headline}</h1>
         <p class="hero-desc">${gInfo.tagline}</p>
         <div class="hero-actions">
+          <button id="btn-start-lang" class="btn btn-success">🌍 Arena 3 Bahasa</button>
           <button id="btn-start-tka" class="btn btn-amber">🎯 Simulasi TKA</button>
           <button id="btn-quick-play" class="btn btn-primary">🎲 Game Acak</button>
           <button id="btn-open-music" class="btn btn-secondary">${icon('music')} Musik</button>
@@ -274,6 +287,11 @@ function renderHome() {
       sfx.click();
       launchGame(card.dataset.game);
     });
+  });
+
+  root.querySelector('#btn-start-lang').addEventListener('click', () => {
+    sfx.click();
+    launchGame('language');
   });
 
   root.querySelector('#btn-start-tka').addEventListener('click', () => {

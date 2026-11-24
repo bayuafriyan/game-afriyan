@@ -831,3 +831,315 @@
   .memory-grid.cols-5 { grid-template-columns: repeat(4, 1fr); }
   .meteor-canvas-wrap { height: 350px; }
 }
+
+/* =====================================================
+   GAME 8: ARENA BAHASA DUNIA (Inggris, Jepang, Mandarin)
+   ===================================================== */
+.lang-switch-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 0.9rem;
+}
+
+.lang-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.58rem 1.15rem;
+  border-radius: 15px;
+  border: 2.5px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  box-shadow: 0 4px 0 #cbd5e1;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.14s;
+}
+
+.lang-tab-btn.active {
+  background: linear-gradient(135deg, #ec4899, #8b5cf6);
+  border-color: #7c3aed;
+  box-shadow: 0 4px 0 #5b21b6;
+  color: #ffffff;
+}
+
+.lang-card-hero {
+  text-align: center;
+  padding: 1.4rem 1rem;
+  background: #f8fafc;
+  border: 2.5px solid #e2e8f0;
+  border-radius: 22px;
+  margin-bottom: 1.2rem;
+}
+
+.lang-emoji-big { font-size: 3.1rem; display: block; margin-bottom: 0.35rem; }
+
+.lang-word-main {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4.5vw, 3.1rem);
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.2;
+}
+
+.lang-reading {
+  font-size: 1.08rem;
+  font-weight: 800;
+  color: var(--primary);
+  margin-top: 0.3rem;
+}
+
+.lang-reading.muted { color: #94a3b8; font-size: 0.9rem; }
+
+.lang-meaning {
+  font-size: 0.96rem;
+  color: #334155;
+  margin-top: 0.45rem;
+  font-weight: 700;
+}
+
+.lang-example {
+  margin-top: 0.65rem;
+  font-size: 0.92rem;
+  color: #475569;
+  font-style: italic;
+  font-weight: 600;
+}
+
+.tone-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.45rem;
+  margin-top: 0.6rem;
+}
+
+.tone-badge {
+  font-size: 0.76rem;
+  font-weight: 800;
+  padding: 0.24rem 0.65rem;
+  border-radius: 9px;
+  background: #fef3c7;
+  color: #92400e;
+  border: 1.5px solid #fcd34d;
+}
+
+.lang-audio-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.65rem;
+  margin-bottom: 1.25rem;
+}
+
+.mic-zone {
+  text-align: center;
+  padding: 1.2rem;
+  border-radius: 20px;
+  background: #f0f9ff;
+  border: 2.5px dashed #38bdf8;
+}
+
+.mic-btn {
+  padding: 0.9rem 1.8rem;
+  border-radius: 18px;
+  border: 2.5px solid #db2777;
+  background: linear-gradient(135deg, #ec4899, #f43f5e);
+  color: #fff;
+  box-shadow: 0 5px 0 #be185d;
+  font-family: var(--font-display);
+  font-size: 1.08rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.14s, box-shadow 0.14s;
+}
+
+.mic-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #be185d; }
+.mic-btn.listening {
+  background: #ef4444;
+  animation: micPulse 1s ease-in-out infinite;
+}
+
+@keyframes micPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.mic-note {
+  font-size: 0.84rem;
+  color: #475569;
+  font-weight: 700;
+  margin-top: 0.65rem;
+}
+
+/* Writing & Tracing Canvas */
+.write-top-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1.15rem;
+}
+
+.tracing-stage {
+  display: grid;
+  grid-template-columns: 326px 1fr;
+  gap: 1.4rem;
+  align-items: center;
+}
+
+.tracing-canvas-wrap {
+  width: 326px;
+  height: 326px;
+  border-radius: 22px;
+  border: 3px solid #94a3b8;
+  background: #ffffff;
+  box-shadow: inset 0 0 18px rgba(15, 23, 42, 0.05), 0 6px 0 #cbd5e1;
+  overflow: hidden;
+  touch-action: none;
+}
+
+#trace-canvas { display: block; cursor: crosshair; }
+
+.tracing-tip {
+  font-weight: 700;
+  color: #475569;
+  margin-bottom: 1rem;
+  line-height: 1.5;
+}
+
+.tracing-btn-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  max-width: 260px;
+}
+
+.en-write-box {
+  display: flex;
+  gap: 0.65rem;
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+/* NPC Dialogue Mode */
+.npc-stage {
+  background: #f8fafc;
+  border: 2.5px solid #cbd5e1;
+  border-radius: 22px;
+  padding: 1.25rem;
+  margin-bottom: 1.15rem;
+}
+
+.npc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.npc-name {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.npc-bubble {
+  background: #ffffff;
+  border: 2.5px solid #93c5fd;
+  box-shadow: 0 4px 0 #bfdbfe;
+  border-radius: 18px;
+  padding: 1rem 1.2rem;
+  margin-bottom: 0.7rem;
+}
+
+.npc-line { font-family: var(--font-display); font-size: 1.28rem; color: #0f172a; }
+.npc-romaji { font-size: 0.9rem; color: var(--primary); font-weight: 700; margin-top: 0.3rem; }
+.npc-hint { font-size: 0.85rem; color: #64748b; font-weight: 700; }
+
+.dialog-choices { display: flex; flex-direction: column; gap: 0.75rem; }
+
+.dialog-opt-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  text-align: left;
+  padding: 0.95rem 1.15rem;
+  border-radius: 16px;
+  border: 2.5px solid #cbd5e1;
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 5px 0 #cbd5e1;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.12s, border-color 0.14s;
+}
+
+.dialog-opt-btn:hover {
+  border-color: var(--primary);
+  background: #f0f9ff;
+  transform: translateY(-2px);
+}
+
+/* Tri-Language Flashcards */
+.tri-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 0.95rem;
+}
+
+.tri-card {
+  background: #f8fafc;
+  border: 2.5px solid #cbd5e1;
+  box-shadow: 0 5px 0 #cbd5e1;
+  border-radius: 18px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.tri-card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px dashed #e2e8f0;
+  font-family: var(--font-display);
+  font-size: 1.08rem;
+}
+
+.tri-emoji { font-size: 1.6rem; }
+
+.tri-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.tri-row small { color: #64748b; font-weight: 600; margin-left: 0.25rem; }
+
+.mini-speak-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  border: 2px solid #cbd5e1;
+  background: #ffffff;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.mini-speak-btn:hover { background: #e0f2fe; border-color: var(--primary); }
+
+@media (max-width: 740px) {
+  .tracing-stage { grid-template-columns: 1fr; justify-items: center; }
+  .tracing-btn-col { max-width: 100%; width: 100%; }
+}
