@@ -2,7 +2,8 @@
 
 **Makin Cerdas Makin Sukses** adalah platform game edukasi dan latihan ujian berbasis web untuk pelajar **SD, SMP, hingga SMA/MA/SMK sederajat**. Mencakup materi **Kurikulum Merdeka**, **Kurikulum 2013 (K13)**, latihan **TKA**, **ANBK**, **Ujian Sekolah**, **UTBK-SNBT**, **Arena 3 Bahasa (Inggris CEFR, Jepang JLPT, Mandarin YCT/HSK dengan 3.150+ kosakata terverifikasi / 1.053 konsep × 3 bahasa)** lengkap dengan animasi adaptif per jenjang dan **Studio Musik (Custom & Rekomendasi)**.
 
-👉 **Mainkan Langsung**: https://bayuafriyan.github.io/game-afriyan/
+👉 **Mainkan Langsung (Cloudflare HTTPS)**: https://makincerdasmakinsukses.pages.dev/
+👉 **Mirror GitHub Pages**: https://bayuafriyan.github.io/game-afriyan/
 
 ---
 
