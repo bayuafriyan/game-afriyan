@@ -55,30 +55,126 @@ function defaultState() {
   };
 }
 
+const MAX_STORED_XP = 10_000_000;
+const ALLOWED_GRADES = new Set(['SD', 'SMP', 'SMA']);
+const BADGE_IDS = new Set(BADGE_DEFS.map((b) => b.id));
+const SAFE_ID_RE = /^[a-z0-9_-]{1,32}$/i;
+const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
+function cleanSafeText(value, fallback, maxLen = 64) {
+  if (typeof value !== 'string') return fallback;
+  const cleaned = value.replace(/[\u0000-\u001F\u007F<>`"'&]/g, '').trim().slice(0, maxLen);
+  return cleaned || fallback;
+}
+
+function clampSafeInt(value, fallback, max = MAX_STORED_XP) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
+  return Math.min(max, Math.max(0, Math.floor(value)));
+}
+
+function cleanSafeIdList(arr, maxItems = 20, allowedSet = null) {
+  if (!Array.isArray(arr)) return [];
+  const seen = new Set();
+  const out = [];
+  for (const item of arr) {
+    if (typeof item !== 'string' || !SAFE_ID_RE.test(item)) continue;
+    if (allowedSet && !allowedSet.has(item)) continue;
+    if (seen.has(item)) continue;
+    seen.add(item);
+    out.push(item);
+    if (out.length >= maxItems) break;
+  }
+  return out;
+}
+
+function sanitizeQuests(rawQuests) {
+  const fresh = defaultQuests();
+  if (
+    !rawQuests ||
+    typeof rawQuests !== 'object' ||
+    Array.isArray(rawQuests) ||
+    rawQuests.date !== fresh.date ||
+    !Array.isArray(rawQuests.items)
+  ) {
+    return fresh;
+  }
+
+  const items = fresh.items.map((def) => {
+    const found = rawQuests.items.find(
+      (it) => it && typeof it === 'object' && !Array.isArray(it) && it.id === def.id
+    );
+    const entry = {
+      id: def.id,
+      title: def.title,
+      target: def.target,
+      progress: clampSafeInt(found?.progress, 0, def.target),
+      reward: def.reward,
+      claimed: typeof found?.claimed === 'boolean' ? found.claimed : false,
+    };
+    if (Array.isArray(def.modes)) {
+      entry.modes = cleanSafeIdList(found?.modes, 20);
+    }
+    return entry;
+  });
+
+  return { date: fresh.date, items };
+}
+
+export function sanitizeProfile(raw) {
+  const base = defaultState();
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return base;
+  }
+
+  const highScores = {};
+  if (raw.highScores && typeof raw.highScores === 'object' && !Array.isArray(raw.highScores)) {
+    let count = 0;
+    for (const key of Object.keys(raw.highScores)) {
+      if (count >= 64) break;
+      if (DANGEROUS_KEYS.has(key) || !SAFE_ID_RE.test(key)) continue;
+      if (!Object.prototype.hasOwnProperty.call(raw.highScores, key)) continue;
+      highScores[key] = clampSafeInt(raw.highScores[key], 0, 1_000_000);
+      count++;
+    }
+  }
+
+  return {
+    name: cleanSafeText(raw.name, base.name, 24),
+    avatar: AVATARS.includes(raw.avatar) ? raw.avatar : base.avatar,
+    grade: ALLOWED_GRADES.has(raw.grade) ? raw.grade : base.grade,
+    xp: clampSafeInt(raw.xp, 0, MAX_STORED_XP),
+    gamesPlayed: clampSafeInt(raw.gamesPlayed, 0, 1_000_000),
+    totalCorrect: clampSafeInt(raw.totalCorrect, 0, 1_000_000),
+    bestStreak: clampSafeInt(raw.bestStreak, 0, 100_000),
+    playedModes: cleanSafeIdList(raw.playedModes, 20),
+    highScores,
+    badges: cleanSafeIdList(raw.badges, 32, BADGE_IDS),
+    quests: sanitizeQuests(raw.quests),
+  };
+}
+
 export function loadProfile() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return defaultState();
-    const parsed = { ...defaultState(), ...JSON.parse(raw) };
-    if (!parsed.quests || parsed.quests.date !== todayStr()) {
-      parsed.quests = defaultQuests();
-    }
-    return parsed;
+    if (!raw || raw.length > 100_000) return defaultState();
+    const parsed = JSON.parse(raw);
+    return sanitizeProfile(parsed);
   } catch {
     return defaultState();
   }
 }
 
 export function saveProfile(profile) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
+  const clean = sanitizeProfile(profile);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(clean));
 }
 
 export function getLevelInfo(xp) {
-  // Each level requires 150 + (level-1)*60 XP
+  // Each level requires 150 + (level-1)*60 XP (bounded against Infinity/NaN DoS)
   let level = 1;
-  let remaining = xp;
+  let remaining = Number.isFinite(xp) ? Math.min(MAX_STORED_XP, Math.max(0, Math.floor(xp))) : 0;
   let needed = 150;
-  while (remaining >= needed) {
+  while (remaining >= needed && level < 1000) {
     remaining -= needed;
     level++;
     needed = 150 + (level - 1) * 60;

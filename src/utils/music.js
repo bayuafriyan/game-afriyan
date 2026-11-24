@@ -130,32 +130,97 @@ class MusicPlayer {
     }
   }
 
-  loadCustomFile(file) {
-    if (!file) return;
+  static sanitizeAudioLabel(rawName, fallback = 'Musik Custom') {
+    if (typeof rawName !== 'string') return fallback;
+    const cleaned = rawName
+      .replace(/\.[^/.]+$/, '')
+      .replace(/[\u0000-\u001F\u007F<>`"'&]/g, '')
+      .trim()
+      .slice(0, 60);
+    return cleaned || fallback;
+  }
+
+  static validateAudioFile(file) {
+    if (!file || typeof file.size !== 'number' || typeof file.name !== 'string') return false;
+    const MAX_AUDIO_BYTES = 50 * 1024 * 1024;
+    if (file.size <= 0 || file.size > MAX_AUDIO_BYTES) return false;
+    const mime = typeof file.type === 'string' ? file.type.toLowerCase() : '';
+    const hasAudioMime = mime.startsWith('audio/');
+    const hasAudioExt = /\.(mp3|wav|ogg|m4a|aac|flac|webm|opus)$/i.test(file.name);
+    return hasAudioMime || (!mime && hasAudioExt);
+  }
+
+  static isSafeExternalAudioUrl(rawUrl) {
+    if (typeof rawUrl !== 'string') return null;
+    const trimmed = rawUrl.trim();
+    if (!trimmed || trimmed.length > 1024 || /[\u0000-\u0020\u007F]/.test(trimmed)) return null;
+    let parsed;
+    try {
+      parsed = new URL(trimmed);
+    } catch {
+      return null;
+    }
+    if (parsed.protocol !== 'https:') return null;
+    if (parsed.username || parsed.password) return null;
+    if (parsed.port && parsed.port !== '443') return null;
+    const host = parsed.hostname.toLowerCase().replace(/^\[|\]$/g, '').replace(/\.$/, '');
+    if (!host || !host.includes('.') || host.includes(':')) return null;
+    if (
+      host === 'localhost' ||
+      host.endsWith('.localhost') ||
+      host.endsWith('.local') ||
+      host.endsWith('.internal') ||
+      host.endsWith('.localdomain') ||
+      host.endsWith('.arpa') ||
+      host.endsWith('.home') ||
+      host.endsWith('.lan')
+    ) {
+      return null;
+    }
+    // Block raw IPv4 addresses (loopback, RFC1918, CGNAT, link-local) and numeric/hex IP obfuscations
+    if (/^(0x[0-9a-f]+|0[0-7]+|\d+)$/i.test(host)) return null;
+    const ipv4Match = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+    if (ipv4Match) {
+      return null;
+    }
+    return parsed.href;
+  }
+
+  loadCustomFile(file, onError = null) {
+    if (!MusicPlayer.validateAudioFile(file)) {
+      if (onError) onError();
+      return false;
+    }
     if (this.customUrl && this.customUrl.startsWith('blob:')) {
       URL.revokeObjectURL(this.customUrl);
     }
     this.stop();
     this.customUrl = URL.createObjectURL(file);
-    this.customName = file.name.replace(/\.[^/.]+$/, '');
+    this.customName = MusicPlayer.sanitizeAudioLabel(file.name, 'Musik Lokal');
     this.customAudio.src = this.customUrl;
     this.customAudio.volume = this.volume;
     this.mode = 'custom';
     this.play();
+    return true;
   }
 
   loadCustomUrl(url, label = 'Musik URL Custom', onError = null) {
-    if (!url || !/^https?:\/\//i.test(url)) {
+    const safeHref = MusicPlayer.isSafeExternalAudioUrl(url);
+    if (!safeHref) {
       if (onError) onError();
-      return;
+      return false;
+    }
+    if (this.customUrl && this.customUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(this.customUrl);
     }
     this.stop();
-    this.customUrl = url;
-    this.customName = label;
-    this.customAudio.src = url;
+    this.customUrl = safeHref;
+    this.customName = MusicPlayer.sanitizeAudioLabel(label, 'Musik URL Custom');
+    this.customAudio.src = safeHref;
     this.customAudio.volume = this.volume;
     this.mode = 'custom';
     this.play(onError);
+    return true;
   }
 
   play(onError = null) {

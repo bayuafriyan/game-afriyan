@@ -22,6 +22,12 @@ import { mountMemoryMatch } from './games/memoryMatch.js';
 import { mountWordScramble } from './games/wordScramble.js';
 import { mountTrueFalse } from './games/trueFalse.js';
 import { mountCategorySort } from './games/categorySort.js';
+import {
+  FEEDBACK_ROLES,
+  FEEDBACK_CATEGORIES,
+  fetchFeedback,
+  sendFeedback,
+} from './utils/feedback.js';
 
 const GAMES = [
   {
@@ -138,7 +144,11 @@ const toastContainer = document.getElementById('toast-container');
 function showToast(emojiOrIcon, text) {
   const el = document.createElement('div');
   el.className = 'toast';
-  el.innerHTML = `<span>${emojiOrIcon}</span><span>${text}</span>`;
+  const iconSpan = document.createElement('span');
+  iconSpan.textContent = String(emojiOrIcon ?? '');
+  const textSpan = document.createElement('span');
+  textSpan.textContent = String(text ?? '');
+  el.append(iconSpan, textSpan);
   toastContainer.appendChild(el);
   setTimeout(() => {
     el.classList.add('fade-out');
@@ -155,6 +165,8 @@ function hydrateStaticIcons() {
   document.getElementById('brand-icon-slot').innerHTML = icon('brand');
   document.getElementById('music-icon-slot').innerHTML = icon('music');
   document.getElementById('quest-icon-slot').innerHTML = icon('quest');
+  const feedbackSlot = document.getElementById('feedback-icon-slot');
+  if (feedbackSlot) feedbackSlot.innerHTML = icon('feedback');
   document.querySelectorAll('.grade-icon-slot').forEach((slot) => {
     slot.innerHTML = icon(slot.dataset.icon);
   });
@@ -283,7 +295,10 @@ function renderHome() {
 
     <footer class="lobby-footer">
       <span>📚 Soal latihan mandiri berbasis kurikulum nasional • Data progres tersimpan aman di perangkatmu</span>
-      <button id="btn-open-info" class="btn btn-secondary btn-sm">ℹ️ Info Orang Tua & Guru</button>
+      <div class="footer-actions">
+        <button id="btn-open-feedback" class="btn btn-primary btn-sm">💬 Kritik &amp; Saran</button>
+        <button id="btn-open-info" class="btn btn-secondary btn-sm">ℹ️ Info Orang Tua &amp; Guru</button>
+      </div>
     </footer>
   `;
 
@@ -315,9 +330,232 @@ function renderHome() {
     openMusicModal();
   });
 
+  root.querySelector('#btn-open-feedback').addEventListener('click', () => {
+    sfx.click();
+    openFeedbackModal();
+  });
+
   root.querySelector('#btn-open-info').addEventListener('click', () => {
     sfx.click();
     openInfoModal();
+  });
+}
+
+function formatFeedbackDate(isoStr) {
+  try {
+    return new Intl.DateTimeFormat('id-ID', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    }).format(new Date(isoStr));
+  } catch {
+    return '';
+  }
+}
+
+function renderFeedbackList(container, items) {
+  container.replaceChildren();
+  if (!items || items.length === 0) {
+    const empty = document.createElement('p');
+    empty.className = 'feedback-meta';
+    empty.textContent = 'Belum ada masukan tersimpan. Jadilah yang pertama memberi saran!';
+    container.appendChild(empty);
+    return;
+  }
+
+  for (const item of items) {
+    const card = document.createElement('article');
+    card.className = 'feedback-item';
+
+    const top = document.createElement('div');
+    top.className = 'feedback-item-top';
+
+    const author = document.createElement('span');
+    author.className = 'feedback-author';
+    author.textContent = `${item.name || 'Sahabat Belajar'} (${item.role || 'Umum'})`;
+
+    const stars = document.createElement('span');
+    stars.className = 'feedback-stars';
+    const r = Math.min(5, Math.max(1, Number(item.rating) || 5));
+    stars.textContent = `${'★'.repeat(r)}${'☆'.repeat(5 - r)}`;
+
+    top.append(author, stars);
+
+    const meta = document.createElement('div');
+    meta.className = 'feedback-meta';
+    const formattedDate = formatFeedbackDate(item.created_at);
+    meta.textContent = formattedDate
+      ? `${item.category || 'Saran Fitur'} • ${formattedDate}`
+      : `${item.category || 'Saran Fitur'}`;
+
+    const body = document.createElement('p');
+    body.className = 'feedback-body';
+    body.textContent = String(item.message || '');
+
+    card.append(top, meta, body);
+    container.appendChild(card);
+  }
+}
+
+function openFeedbackModal() {
+  const modalOpenedAt = Date.now();
+  let selectedRating = 5;
+
+  openModal(`
+    <div class="modal-header">
+      <h2>${icon('feedback')} Kritik &amp; Saran</h2>
+      <button class="modal-close" id="m-close" aria-label="Tutup">✕</button>
+    </div>
+
+    <div class="feedback-shield-banner">
+      <span>${icon('shield')}</span>
+      <span>Masukanmu membantu kami meningkatkan kualitas materi soal, game, dan kenyamanan belajar. Jangan sertakan data pribadi sensitif atau tautan eksternal.</span>
+    </div>
+
+    <form id="fb-form" class="feedback-form" novalidate>
+      <input type="text" id="fb-website" name="website" class="hp-trap" tabindex="-1" autocomplete="off" aria-hidden="true" />
+
+      <div class="feedback-row">
+        <div>
+          <label class="feedback-label" for="fb-name">Nama (opsional)</label>
+          <input id="fb-name" class="feedback-input" type="text" maxlength="40" placeholder="Contoh: Raka (kosong = anonim)" />
+        </div>
+        <div>
+          <label class="feedback-label" for="fb-role">Peran</label>
+          <select id="fb-role" class="feedback-select">
+            ${FEEDBACK_ROLES.map((role) => `<option value="${escapeHtml(role)}">${escapeHtml(role)}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+
+      <div class="feedback-row">
+        <div>
+          <label class="feedback-label" for="fb-category">Kategori</label>
+          <select id="fb-category" class="feedback-select">
+            ${FEEDBACK_CATEGORIES.map((cat) => `<option value="${escapeHtml(cat)}">${escapeHtml(cat)}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <span class="feedback-label">Penilaian Kamu</span>
+          <div id="fb-stars" class="star-picker" role="group" aria-label="Pilih rating 1 sampai 5 bintang">
+            ${[1, 2, 3, 4, 5]
+              .map(
+                (n) =>
+                  `<button type="button" class="star-btn active" data-star="${n}" aria-label="${n} bintang">★</button>`
+              )
+              .join('')}
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <label class="feedback-label" for="fb-message">Pesan Kritik &amp; Saran</label>
+        <textarea id="fb-message" class="feedback-textarea" maxlength="600" placeholder="Tulis saran fitur, usulan kosakata atau materi TKA, laporan bug, maupun apresiasi..."></textarea>
+        <div class="feedback-char-row">
+          <span>Minimal 10 karakter, tanpa tautan URL.</span>
+          <span id="fb-count">0 / 600</span>
+        </div>
+      </div>
+
+      <div id="fb-alert" class="feedback-alert hidden" role="status"></div>
+
+      <button type="submit" id="fb-submit" class="btn btn-primary">Kirim Kritik &amp; Saran</button>
+    </form>
+
+    <div class="feedback-list-head">
+      <strong style="font-size:0.94rem;">Masukan Terbaru</strong>
+      <div style="display:flex;gap:0.45rem;align-items:center;flex-wrap:wrap;">
+        <span id="fb-stats" class="feedback-meta">Memuat...</span>
+        <span id="fb-source-pill" class="feedback-source-pill">Terhubung</span>
+      </div>
+    </div>
+    <div id="fb-list" class="feedback-list"></div>
+  `);
+
+  modalContent.querySelector('#m-close').addEventListener('click', closeModal);
+
+  const starBtns = modalContent.querySelectorAll('#fb-stars .star-btn');
+  const syncStars = () => {
+    starBtns.forEach((btn) => {
+      const val = Number(btn.dataset.star);
+      btn.classList.toggle('active', val <= selectedRating);
+    });
+  };
+  starBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      sfx.click();
+      selectedRating = Number(btn.dataset.star) || 5;
+      syncStars();
+    });
+  });
+
+  const msgEl = modalContent.querySelector('#fb-message');
+  const countEl = modalContent.querySelector('#fb-count');
+  msgEl.addEventListener('input', () => {
+    countEl.textContent = `${msgEl.value.length} / 600`;
+  });
+
+  const alertEl = modalContent.querySelector('#fb-alert');
+  const setAlert = (type, text) => {
+    alertEl.className = `feedback-alert ${type === 'error' ? 'is-error' : 'is-success'}`;
+    alertEl.textContent = text;
+    alertEl.classList.remove('hidden');
+  };
+
+  const listEl = modalContent.querySelector('#fb-list');
+  const statsEl = modalContent.querySelector('#fb-stats');
+  const sourcePillEl = modalContent.querySelector('#fb-source-pill');
+
+  const refreshList = async () => {
+    const res = await fetchFeedback(12);
+    sourcePillEl.textContent = res.source === 'server' ? 'Database Server' : 'Offline Lokal';
+    statsEl.textContent = `${res.stats?.total || 0} masukan • ★ ${res.stats?.avgRating || 0}`;
+    renderFeedbackList(listEl, res.items);
+  };
+  refreshList();
+
+  const formEl = modalContent.querySelector('#fb-form');
+  const submitBtn = modalContent.querySelector('#fb-submit');
+  formEl.addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    alertEl.classList.add('hidden');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Mengirim...';
+
+    const result = await sendFeedback({
+      name: modalContent.querySelector('#fb-name').value,
+      role: modalContent.querySelector('#fb-role').value,
+      category: modalContent.querySelector('#fb-category').value,
+      rating: selectedRating,
+      message: msgEl.value,
+      website: modalContent.querySelector('#fb-website').value,
+      elapsedMs: Date.now() - modalOpenedAt,
+    });
+
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Kirim Kritik & Saran';
+
+    if (!result.ok) {
+      sfx.wrong();
+      setAlert('error', result.error || 'Gagal mengirim kritik dan saran.');
+      return;
+    }
+
+    sfx.correct(2);
+    msgEl.value = '';
+    countEl.textContent = '0 / 600';
+    setAlert(
+      'success',
+      result.source === 'server'
+        ? 'Terima kasih! Kritik dan saran kamu berhasil tersimpan di server.'
+        : 'Tersimpan secara lokal di perangkat (mode offline).'
+    );
+    showToast(
+      '💬',
+      result.source === 'server'
+        ? 'Kritik & saran terkirim ke server!'
+        : 'Kritik & saran tersimpan lokal.'
+    );
+    await refreshList();
   });
 }
 
@@ -448,20 +686,26 @@ function openMusicModal() {
   modalContent.querySelector('#m-file-input').addEventListener('change', (e) => {
     const file = e.target.files?.[0];
     if (file) {
-      bgm.loadCustomFile(file);
-      showToast('🎧', `Memutar lagu custom: ${file.name}`);
-      openMusicModal();
+      const ok = bgm.loadCustomFile(file, () => {
+        showToast('⚠️', 'File audio harus berformat MP3/WAV/OGG/M4A maksimal 50 MB.');
+      });
+      if (ok) {
+        showToast('🎧', `Memutar lagu custom: ${bgm.getState().currentTitle}`);
+        openMusicModal();
+      }
     }
   });
 
   modalContent.querySelector('#m-url-btn').addEventListener('click', () => {
     const url = modalContent.querySelector('#m-url-input').value.trim();
     if (!url) return;
-    bgm.loadCustomUrl(url, 'Audio URL Custom', () => {
-      showToast('⚠️', 'Gagal memuat URL audio. Pastikan link langsung ke file MP3/OGG.');
+    const ok = bgm.loadCustomUrl(url, 'Audio URL Custom', () => {
+      showToast('⚠️', 'Gunakan tautan HTTPS publik langsung ke file audio MP3/OGG (tanpa IP privat/localhost).');
     });
-    showToast('🎧', 'Memutar musik dari URL custom...');
-    openMusicModal();
+    if (ok) {
+      showToast('🎧', 'Memutar musik dari URL custom...');
+      openMusicModal();
+    }
   });
 }
 
@@ -487,6 +731,10 @@ function openInfoModal() {
       <div class="info-card">
         <strong>🎵 Musik Latar Lokal</strong>
         <p>File musik custom yang dipilih dari perangkat hanya diputar langsung di browser perangkat tersebut dan tidak pernah diunggah ke internet.</p>
+      </div>
+      <div class="info-card">
+        <strong>🛡️ Keamanan Siber Berlapis</strong>
+        <p>Website dilindungi HTTPS TLS 1.3, header keamanan ketat (CSP, anti-clickjacking DENY, COOP/CORP), sanitasi input bebas XSS, proteksi CSRF/anti-bot, serta pembatasan laju permintaan di jaringan tepi.</p>
       </div>
     </div>
   `);
@@ -668,6 +916,11 @@ function initEvents() {
   document.getElementById('btn-quests').addEventListener('click', () => {
     sfx.click();
     openQuestsModal();
+  });
+
+  document.getElementById('btn-feedback')?.addEventListener('click', () => {
+    sfx.click();
+    openFeedbackModal();
   });
 
   modalBackdrop.addEventListener('click', (e) => {
